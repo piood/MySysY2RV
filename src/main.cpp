@@ -6,6 +6,9 @@
 #include <string>
 #include "../ast/ast.hpp"
 #include "../ast/transform_koopa_raw.hpp"
+#include "../ast/generate_code.hpp"
+//#include "../ast/generate_test.hpp"
+
 
 using namespace std;
 
@@ -38,14 +41,15 @@ int main(int argc, const char *argv[]) {
   //ast->Dump();
   string IR_str = ast->generate_Koopa_IR();
   const char* IR_cstr = IR_str.c_str();
-  //cout<<IR_cstr;
+  cout<<IR_cstr;
   //koopa_IR2koopa_raw(IR_cstr);
-  
+
   if(strcmp(mode, "-riscv") == 0){
     string risc_str =  Koopa_IR2RISC_V(IR_cstr);
     FILE* output_file = fopen(output, "w");
     fwrite(risc_str.c_str(), sizeof(char), risc_str.size(), output_file);
     fclose(output_file);
   }
+
   return 0;
 }

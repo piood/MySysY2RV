@@ -42,8 +42,9 @@ using namespace std;
 %token <int_val> INT_CONST
 
 // 非终结符的类型定义
-%type <ast_val> FuncDef FuncType Block Stmt
+%type <ast_val> FuncDef FuncType Block Stmt Exp PrimaryExp UnaryExp
 %type <int_val> Number
+%type <str_val> UnaryOp
 
 %%
 
@@ -98,9 +99,44 @@ Block
   ;
 
 Stmt
-  : RETURN Number ';' {
+  : RETURN Exp ';' {
     auto ast = new StmtAST();
-    ast->number = $2;
+    ast->exp = unique_ptr<BaseAST>($2);
+    $$ = ast;
+  }
+  ;
+
+Exp
+  : UnaryExp {
+    auto ast = new ExpAST();
+    ast->unaryexp = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  ;
+
+UnaryExp
+  : UnaryOp UnaryExp {
+    auto ast = new UnaryExpAST();
+    ast->unaryop = *unique_ptr<string>($1);
+    ast->unaryexp = unique_ptr<BaseAST>($2);
+    $$ = ast;
+  }
+  | PrimaryExp {
+    auto ast = new UnaryExpAST();
+    ast->primaryexp = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  ;
+
+PrimaryExp
+  : '(' Exp ')' {
+    auto ast = new PrimaryExpAST();
+    ast->exp = unique_ptr<BaseAST>($2);
+    $$ = ast;
+  }
+  |  Number {
+    auto ast = new PrimaryExpAST();
+    ast->number = $1;
     $$ = ast;
   }
   ;
@@ -110,6 +146,17 @@ Number
     $$ = $1;
   }
   ;
+
+UnaryOp
+  : '+' {
+    $$ = new std::string("+");
+  }
+  | '-' {
+    $$ = new std::string("-");
+  }
+  | '!' {
+    $$ = new std::string("!");
+  }
 
 %%
 

@@ -2,9 +2,8 @@
 #include<cassert>
 #include "koopa.h"
 #include <string>
+#include <unordered_map>
 
-
-std::string Koopa_IR2RISC_V(const char *str);
 void koopa_IR2koopa_raw(const char *str);
 void Visit(const koopa_raw_program_t &program);
 void Visit(const koopa_raw_slice_t &slice);
@@ -13,6 +12,8 @@ void Visit(const koopa_raw_basic_block_t &bb);
 void Visit(const koopa_raw_value_t &value);
 void Visit(const koopa_raw_return_t &ret);
 void Visit(const koopa_raw_integer_t &integer);
+void Visit(const koopa_raw_binary_t &binary);
+
 
 
 void koopa_IR2koopa_raw(const char *str){
@@ -30,73 +31,6 @@ void koopa_IR2koopa_raw(const char *str){
     Visit(raw);
 
     koopa_delete_raw_program_builder(builder);
-}
-
-std::string Koopa_IR2RISC_V(const char *str){
-    koopa_program_t program;
-    koopa_error_code_t ret = koopa_parse_from_string(str, &program);
-
-    assert(ret == KOOPA_EC_SUCCESS);
-
-    koopa_raw_program_builder_t builder = koopa_new_raw_program_builder();
-
-    koopa_raw_program_t raw = koopa_build_raw_program(builder, program);
-
-    koopa_delete_program(program);
-
-    std::string risc_v_str = "  .text\n";
-
-    risc_v_str += "  .globl";
-
-    //得到所有定义的函数名
-    for(int i = 0; i < raw.funcs.len; i++){
-        assert(raw.funcs.kind == KOOPA_RSIK_FUNCTION);
-        koopa_raw_function_t func =(koopa_raw_function_t) raw.funcs.buffer[i];
-        const char* function_name = func->name;
-        std::string function_name_str(function_name);
-        risc_v_str += " "+function_name_str.std::string::substr(1);
-    }
-    risc_v_str += "\n";
-
-    //遍历所有的函数体
-    for(int i = 0; i < raw.funcs.len; i++){
-
-        assert(raw.funcs.kind == KOOPA_RSIK_FUNCTION);
-
-        koopa_raw_function_t func =(koopa_raw_function_t) raw.funcs.buffer[i];
-        //得到每个函数的name
-        const char* function_name = func->name;
-        std::string function_name_str(function_name);
-        risc_v_str += function_name_str.std::string::substr(1)+":\n";
-
-
-        //遍历每个函数的基本块
-        for(int j = 0; j < func->bbs.len; j++){
-
-            assert(func->bbs.kind == KOOPA_RSIK_BASIC_BLOCK);
-
-            //遍历每个基本块的指令
-            koopa_raw_basic_block_t bb = (koopa_raw_basic_block_t) func->bbs.buffer[j];
-            for(int k = 0; k < bb->insts.len; k++){
-                koopa_raw_value_t value = (koopa_raw_value_t) bb->insts.buffer[k];
-                if(value->kind.tag == KOOPA_RVT_RETURN){
-                    koopa_raw_return_t ret = value->kind.data.ret;
-
-                    if(ret.value->kind.tag == KOOPA_RVT_INTEGER){
-                        koopa_raw_integer_t integer = ret.value->kind.data.integer;
-                        //integer.value == 0
-
-                        risc_v_str += "  li a0, "+std::to_string(integer.value)+"\n";
-                        risc_v_str += "  ret\n";
-                    }
-                }
-            }
-        }
-    }
-
-    koopa_delete_raw_program_builder(builder);
-
-    return risc_v_str;
 }
 
 
@@ -152,6 +86,9 @@ void Visit(const koopa_raw_basic_block_t &bb) {
 void Visit(const koopa_raw_value_t &value) {
   // 根据指令类型判断后续需要如何访问
   const auto &kind = value->kind;
+
+  // 为每个指令生成一个寄存器
+
   switch (kind.tag) {
     case KOOPA_RVT_RETURN:
       // 访问 return 指令
@@ -161,24 +98,33 @@ void Visit(const koopa_raw_value_t &value) {
       // 访问 integer 指令
       Visit(kind.data.integer);
       break;
+    case KOOPA_RVT_BINARY:
+      Visit(kind.data.binary);
     default:
       // 其他类型暂时遇不到
-      assert(false);
+      std::cout << "Unhandled instruction kind: " << kind.tag << std::endl;
   }
+
 }
 
 void Visit(const koopa_raw_return_t &ret) {
   // 访问返回值
   koopa_raw_value_t ret_value = ret.value;
-  assert(ret_value->kind.tag == KOOPA_RVT_INTEGER);
 
   Visit(ret_value);
+
 }
 
 void Visit(const koopa_raw_integer_t &integer) {
   // 访问整数值
   // ...
-  
-  int32_t int_val = integer.value;
-  assert(int_val == 0);
+    std::string reg;
+    int32_t int_val = integer.value;
+}
+
+void Visit(const koopa_raw_binary_t &binary){
+    koopa_raw_value_t lhs = binary.lhs;
+    koopa_raw_value_t rhs = binary.rhs;
+
+    koopa_raw_binary_op_t op = binary.op;
 }

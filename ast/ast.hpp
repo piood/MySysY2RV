@@ -3,6 +3,8 @@
 #include<cstdio>
 #include<memory>
 
+static int now = 0;
+
 // 所有 AST 的基类
 class BaseAST {
  public:
@@ -91,15 +93,99 @@ class BlockAST : public BaseAST {
 
 class StmtAST : public BaseAST {
  public:
-  int number;
+  std::unique_ptr<BaseAST> exp;
 
   void Dump() const override{
-    std::cout << "StmtAST { ";
-    std::cout<<number;
+    std::cout << "StmtAST { return ";
+    exp->Dump();
     std::cout<<" }";
   } 
 
   std::string generate_Koopa_IR() const override{
-    return "  ret "+std::to_string(number)+"\n";
+    std::string Koopa_IR = exp->generate_Koopa_IR();
+    Koopa_IR += "  ret ";
+    Koopa_IR += "%" + std::to_string(now-1) + "\n";
+    return Koopa_IR;
   }
+};
+
+class ExpAST : public BaseAST{
+public:
+    std::unique_ptr<BaseAST> unaryexp;
+    void Dump() const override{
+        std::cout << "ExpAST { ";
+        unaryexp->Dump();
+        std::cout<<" }";
+    }
+
+    std::string generate_Koopa_IR() const override{
+        return unaryexp->generate_Koopa_IR();
+    }
+};
+
+class UnaryExpAST : public BaseAST{
+public:
+    std::unique_ptr<BaseAST> primaryexp;
+    std::string unaryop;
+    std::unique_ptr<BaseAST> unaryexp;
+
+    void Dump() const override{
+        if(unaryexp){
+            std::cout << "UnaryExpAST { "<< unaryop <<" ";
+            unaryexp->Dump();
+            std::cout<<" }";
+        } else {
+            std::cout<< "UnaryExpAST { ";
+            primaryexp->Dump();
+            std::cout<<" }";
+        }
+    }
+
+    std::string generate_Koopa_IR() const override{
+        std::string Koopa_IR = "";
+        if(unaryexp){
+            if(unaryop == "-"){
+                Koopa_IR = unaryexp->generate_Koopa_IR() + "  %" + std::to_string(now) + " = sub 0, " + "%" + std::to_string(now-1) +" \n";
+                now++;
+            }else if(unaryop == "!"){
+                Koopa_IR = unaryexp->generate_Koopa_IR() + "  %" + std::to_string(now) + " = eq 0, " + "%" + std::to_string(now-1) +" \n";
+                now++;
+            }else if(unaryop == "+"){
+                Koopa_IR = unaryexp->generate_Koopa_IR();
+            }
+        }
+        else{
+            Koopa_IR =  primaryexp->generate_Koopa_IR();
+        }
+        return Koopa_IR;
+    }
+};
+
+class PrimaryExpAST : public BaseAST{
+public:
+    std::unique_ptr<BaseAST> exp;
+    int number;
+
+    void Dump() const override{
+        if(exp){
+            std::cout << "PrimaryExpAST { ( ";
+            exp->Dump();
+            std::cout<<" ) }";
+        } else {
+            std::cout<< "PrimaryExpAST { ";
+            std::cout<<number;
+            std::cout<<" }";
+        }
+    }
+
+    std::string generate_Koopa_IR() const override{
+        std::string Koopa_IR = "";
+        if(exp){
+            Koopa_IR = exp->generate_Koopa_IR();
+        } else {
+            Koopa_IR = "  %" + std::to_string(now) + " = add 0, " + std::to_string(number) +" \n";
+            now++;
+        }
+        return Koopa_IR;
+    }
 };
