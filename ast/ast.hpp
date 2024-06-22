@@ -111,17 +111,98 @@ class StmtAST : public BaseAST {
 
 class ExpAST : public BaseAST{
 public:
-    std::unique_ptr<BaseAST> unaryexp;
+    std::unique_ptr<BaseAST> addexp;
     void Dump() const override{
         std::cout << "ExpAST { ";
-        unaryexp->Dump();
+        addexp->Dump();
         std::cout<<" }";
     }
 
     std::string generate_Koopa_IR() const override{
-        return unaryexp->generate_Koopa_IR();
+        return addexp->generate_Koopa_IR();
     }
 };
+
+class AddExpAST : public BaseAST{
+public:
+    std::unique_ptr<BaseAST> addexp;
+    std::unique_ptr<BaseAST> mulexp;
+    std::string addexpop;
+
+    void Dump() const override{
+        if(addexp){
+            std::cout << "AddExpAST { ";
+            addexp->Dump();
+            std::cout<<" "<<addexpop<<" ";
+            mulexp->Dump();
+            std::cout<<" }";
+        } else {
+            std::cout<< "AddExpAST { ";
+            mulexp->Dump();
+            std::cout<<" }";
+        }
+    }
+
+    std::string generate_Koopa_IR() const override{
+        std::string Koopa_IR = "";
+        if(addexp){
+            if(addexpop == "+"){
+                Koopa_IR = mulexp->generate_Koopa_IR() + addexp->generate_Koopa_IR()  + "  %" + std::to_string(now) + " = add %" + std::to_string(now-2) + ", %" + std::to_string(now-1) + "\n";
+                now++;
+            }else if(addexpop == "-"){
+                Koopa_IR = mulexp->generate_Koopa_IR() + addexp->generate_Koopa_IR() + "  %" + std::to_string(now) + " = sub %" + std::to_string(now-2) + ", %" + std::to_string(now-1) + "\n";
+                now++;
+            }
+        }
+        else{
+            Koopa_IR =  mulexp->generate_Koopa_IR();
+        }
+        return Koopa_IR;
+    }
+};
+
+class MulExpAST : public BaseAST{
+public:
+    std::unique_ptr<BaseAST> mulexp;
+    std::unique_ptr<BaseAST> unaryexp;
+    std::string mulexpop;
+
+    void Dump() const override{
+        if(mulexp){
+            std::cout << "MulExpAST { ";
+            mulexp->Dump();
+            std::cout<<" "<<mulexpop<<" ";
+            unaryexp->Dump();
+            std::cout<<" }";
+        } else {
+            std::cout<< "MulExpAST { ";
+            unaryexp->Dump();
+            std::cout<<" }";
+        }
+    }
+
+    std::string generate_Koopa_IR() const override{
+        std::string Koopa_IR = "";
+        if(mulexp){
+            if(mulexpop == "*"){
+                Koopa_IR = mulexp->generate_Koopa_IR() + unaryexp->generate_Koopa_IR() + "  %" + std::to_string(now) + " = mul %" + std::to_string(now-2) + ", %" + std::to_string(now-1) + "\n";
+                now++;
+            }else if(mulexpop == "/"){
+                Koopa_IR = mulexp->generate_Koopa_IR() + unaryexp->generate_Koopa_IR() + "  %" + std::to_string(now) + " = div %" + std::to_string(now-2) + ", %" + std::to_string(now-1) + "\n";
+                now++;
+            }
+            else if(mulexpop == "%"){
+                Koopa_IR = mulexp->generate_Koopa_IR() + unaryexp->generate_Koopa_IR() + "  %" + std::to_string(now) + " = rem %" + std::to_string(now-2) + ", %" + std::to_string(now-1) + "\n";
+                now++;
+            }
+        }
+        else{
+            Koopa_IR =  unaryexp->generate_Koopa_IR();
+        }
+        return Koopa_IR;
+    }
+};
+
 
 class UnaryExpAST : public BaseAST{
 public:

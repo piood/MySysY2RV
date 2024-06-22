@@ -42,9 +42,9 @@ using namespace std;
 %token <int_val> INT_CONST
 
 // 非终结符的类型定义
-%type <ast_val> FuncDef FuncType Block Stmt Exp PrimaryExp UnaryExp
+%type <ast_val> FuncDef FuncType Block Stmt Exp PrimaryExp UnaryExp MulExp AddExp
 %type <int_val> Number
-%type <str_val> UnaryOp
+%type <str_val> UnaryOp MulExpOp AddExpOp
 
 %%
 
@@ -107,9 +107,39 @@ Stmt
   ;
 
 Exp
-  : UnaryExp {
+  : AddExp {
     auto ast = new ExpAST();
+    ast->addexp = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  ;
+
+MulExp
+  : MulExp MulExpOp UnaryExp{
+    auto ast = new MulExpAST();
+    ast->mulexp = unique_ptr<BaseAST>($1);
+    ast->mulexpop = *unique_ptr<string>($2);
+    ast->unaryexp = unique_ptr<BaseAST>($3);
+    $$ = ast;
+  }
+  | UnaryExp {
+    auto ast = new MulExpAST();
     ast->unaryexp = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  ;
+
+AddExp
+  : AddExp AddExpOp MulExp{
+    auto ast = new AddExpAST();
+    ast->addexp = unique_ptr<BaseAST>($1);
+    ast->addexpop = *unique_ptr<string>($2);
+    ast->mulexp = unique_ptr<BaseAST>($3);
+    $$ = ast;
+  }
+  | MulExp {
+    auto ast = new AddExpAST();
+    ast->mulexp = unique_ptr<BaseAST>($1);
     $$ = ast;
   }
   ;
@@ -157,6 +187,28 @@ UnaryOp
   | '!' {
     $$ = new std::string("!");
   }
+  ;
+
+MulExpOp
+  : '*' {
+    $$ = new std::string("*");
+  }
+  | '/' {
+    $$ = new std::string("/");
+  }
+  | '%' {
+    $$ = new std::string("%");
+  }
+  ;
+
+AddExpOp
+  : '+' {
+    $$ = new std::string("+");
+  }
+  | '-' {
+    $$ = new std::string("-");
+  }
+  ;
 
 %%
 

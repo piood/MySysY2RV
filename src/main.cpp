@@ -37,18 +37,19 @@ int main(int argc, const char *argv[]) {
   assert(!ret);
 
   // 输出解析得到的 AST, 其实就是个字符串
-  //ast->Dump();
+  ast->Dump();
   string IR_str = ast->generate_Koopa_IR();
   const char* IR_cstr = IR_str.c_str();
   cout<<IR_cstr;
   //koopa_IR2koopa_raw(IR_cstr);
-
+  
+  
   if(strcmp(mode, "-riscv") == 0){
     string risc_str =  Koopa_IR2RISC_V(IR_cstr);
     FILE* output_file = fopen(output, "w");
     fwrite(risc_str.c_str(), sizeof(char), risc_str.size(), output_file);
     fclose(output_file);
   }
-
+  
   return 0;
 }

@@ -148,6 +148,11 @@ void generate_code(const koopa_raw_value_t &value){
         std::string lreg = instruction2reg[lhs];
         std::string rreg = instruction2reg[rhs];
 
+        if(op==KOOPA_RBO_ADD&&lreg=="x0"){
+            instruction2reg[value] = rreg;
+            return;
+        }
+
         std::string result_reg = "t"+std::to_string(temp_var_counter++);
         instruction2reg[value] = result_reg;
         switch (op) {
@@ -156,6 +161,15 @@ void generate_code(const koopa_raw_value_t &value){
                 break;
             case KOOPA_RBO_SUB:
                 risc_v_code += "  sub " + result_reg + ", " + lreg + ", " + rreg + "\n";
+                break;
+            case KOOPA_RBO_MUL:
+                risc_v_code += "  mul " + result_reg + ", " + lreg + ", " + rreg + "\n";
+                break;
+            case KOOPA_RBO_DIV:
+                risc_v_code += "  div " + result_reg + ", " + lreg + ", " + rreg + "\n";
+                break;
+            case KOOPA_RBO_MOD:
+                risc_v_code += "  rem " + result_reg + ", " + lreg + ", " + rreg + "\n";
                 break;
             case KOOPA_RBO_EQ:
                 risc_v_code += "  seqz " + result_reg + ", " + rreg + "\n";
