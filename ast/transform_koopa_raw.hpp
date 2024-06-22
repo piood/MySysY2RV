@@ -1,7 +1,10 @@
 #include<iostream>
 #include<cassert>
 #include "koopa.h"
+#include <string>
 
+
+std::string Koopa_IR2RISC_V(const char *str);
 void koopa_IR2koopa_raw(const char *str);
 void Visit(const koopa_raw_program_t &program);
 void Visit(const koopa_raw_slice_t &slice);
@@ -29,7 +32,7 @@ void koopa_IR2koopa_raw(const char *str){
     koopa_delete_raw_program_builder(builder);
 }
 
-void Koopa_IR2RISC_V(const char *str){
+std::string Koopa_IR2RISC_V(const char *str){
     koopa_program_t program;
     koopa_error_code_t ret = koopa_parse_from_string(str, &program);
 
@@ -41,15 +44,38 @@ void Koopa_IR2RISC_V(const char *str){
 
     koopa_delete_program(program);
 
+    std::string risc_v_str = "  .text\n";
+
+    risc_v_str += "  .globl";
+
+    //得到所有定义的函数名
+    for(int i = 0; i < raw.funcs.len; i++){
+        assert(raw.funcs.kind == KOOPA_RSIK_FUNCTION);
+        koopa_raw_function_t func =(koopa_raw_function_t) raw.funcs.buffer[i];
+        const char* function_name = func->name;
+        std::string function_name_str(function_name);
+        risc_v_str += " "+function_name_str.std::string::substr(1);
+    }
+    risc_v_str += "\n";
+
+    //遍历所有的函数体
     for(int i = 0; i < raw.funcs.len; i++){
 
         assert(raw.funcs.kind == KOOPA_RSIK_FUNCTION);
 
         koopa_raw_function_t func =(koopa_raw_function_t) raw.funcs.buffer[i];
+        //得到每个函数的name
+        const char* function_name = func->name;
+        std::string function_name_str(function_name);
+        risc_v_str += function_name_str.std::string::substr(1)+":\n";
+
+
+        //遍历每个函数的基本块
         for(int j = 0; j < func->bbs.len; j++){
 
             assert(func->bbs.kind == KOOPA_RSIK_BASIC_BLOCK);
 
+            //遍历每个基本块的指令
             koopa_raw_basic_block_t bb = (koopa_raw_basic_block_t) func->bbs.buffer[j];
             for(int k = 0; k < bb->insts.len; k++){
                 koopa_raw_value_t value = (koopa_raw_value_t) bb->insts.buffer[k];
@@ -58,9 +84,10 @@ void Koopa_IR2RISC_V(const char *str){
 
                     if(ret.value->kind.tag == KOOPA_RVT_INTEGER){
                         koopa_raw_integer_t integer = ret.value->kind.data.integer;
-                        if(integer.value == 0){
-                            std::cout<<"integer value"<<integer.value<<std::endl;
-                        }
+                        //integer.value == 0
+
+                        risc_v_str += "  li a0, "+std::to_string(integer.value)+"\n";
+                        risc_v_str += "  ret\n";
                     }
                 }
             }
@@ -68,6 +95,8 @@ void Koopa_IR2RISC_V(const char *str){
     }
 
     koopa_delete_raw_program_builder(builder);
+
+    return risc_v_str;
 }
 
 
