@@ -4,6 +4,7 @@
 #include <memory>
 #include <string>
 #include "../ast/ast.hpp"
+#include "../ast/transform_koopa_raw.hpp"
 
 using namespace std;
 
@@ -33,7 +34,12 @@ int main(int argc, const char *argv[]) {
   assert(!ret);
 
   // 输出解析得到的 AST, 其实就是个字符串
-  ast->generate_Koopa_IR();
+  //ast->Dump();
+  string IR_str = ast->generate_Koopa_IR();
+  const char* IR_cstr = IR_str.c_str();
+  //cout<<IR_cstr;
+  //koopa_IR2koopa_raw(IR_cstr);
+  Koopa_IR2RISC_V(IR_cstr);
   cout<<endl;
   return 0;
 }

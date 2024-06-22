@@ -9,7 +9,7 @@ class BaseAST {
   virtual ~BaseAST() = default;
 
   virtual void Dump() const = 0;
-  virtual void generate_Koopa_IR() const = 0;
+  virtual std::string generate_Koopa_IR() const = 0;
 };
 
 // CompUnit 是 BaseAST
@@ -24,8 +24,8 @@ class CompUnitAST : public BaseAST {
     std::cout<<" }";
   }
 
-  void generate_Koopa_IR() const override{
-    func_def->generate_Koopa_IR();
+  std::string generate_Koopa_IR() const override{
+    return func_def->generate_Koopa_IR();
   } 
 };
 
@@ -41,16 +41,18 @@ class FuncDefAST : public BaseAST {
     func_type->Dump();
     std::cout << ", " << ident << ", ";
     block->Dump();
-    std::cout<<" }";
+    std::cout<<" }\n";
   }
 
-  void generate_Koopa_IR() const override{
-    std::cout<<"fun ";
-    std::cout<<"@"<<ident<<"(): ";
-    func_type->generate_Koopa_IR();
-    std::cout<<"{\n";
-    block->generate_Koopa_IR();
-    std::cout<<"}";
+  std::string generate_Koopa_IR() const override{
+    std::string Koopa_IR = "";
+    Koopa_IR+="fun ";
+    Koopa_IR+="@"+ident+"(): ";
+    Koopa_IR+= func_type->generate_Koopa_IR();
+    Koopa_IR+="{\n";
+    Koopa_IR+= block->generate_Koopa_IR();
+    Koopa_IR+="}\n";
+    return Koopa_IR;
   }
 };
 
@@ -64,8 +66,8 @@ class FuncTypeAST : public BaseAST {
     std::cout<<" }";
   }
 
-  void generate_Koopa_IR() const override{
-    std::cout<<"i32 ";
+  std::string generate_Koopa_IR() const override{
+    return "i32 ";
   }
 };
 
@@ -79,9 +81,11 @@ class BlockAST : public BaseAST {
     std::cout<<" }";
   }
 
-  void generate_Koopa_IR() const override{
-    std::cout << "%entry:\n";
-    stmt->generate_Koopa_IR();
+  std::string generate_Koopa_IR() const override{
+    std::string Koopa_IR="";
+    Koopa_IR+="%entry:\n";
+    Koopa_IR+=stmt->generate_Koopa_IR();
+    return Koopa_IR;
   }
 };
 
@@ -95,7 +99,7 @@ class StmtAST : public BaseAST {
     std::cout<<" }";
   } 
 
-  void generate_Koopa_IR() const override{
-    std::cout<<"  ret "<<number<<"\n";
+  std::string generate_Koopa_IR() const override{
+    return "  ret "+std::to_string(number)+"\n";
   }
 };
