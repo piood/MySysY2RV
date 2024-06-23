@@ -153,29 +153,120 @@ void generate_code(const koopa_raw_value_t &value){
             return;
         }
 
-        std::string result_reg = "t"+std::to_string(temp_var_counter++);
-        instruction2reg[value] = result_reg;
+        std::string result_reg;
         switch (op) {
             case KOOPA_RBO_ADD:
-                risc_v_code += "  add " + result_reg + ", " + lreg + ", " + rreg + "\n";
+                if(lreg!="x0"){
+                    result_reg = lreg;
+                }else if(rreg!="x0"){
+                    result_reg = rreg;
+                }else{
+                    result_reg = "t"+std::to_string(temp_var_counter++);
+                }
+                instruction2reg[value] = result_reg;
+                risc_v_code += "  add " + result_reg + ", " + rreg + ", " + lreg + "\n";
                 break;
             case KOOPA_RBO_SUB:
-                risc_v_code += "  sub " + result_reg + ", " + lreg + ", " + rreg + "\n";
+                risc_v_code += "  sub " + rreg + ", " + lreg + ", " + rreg + "\n";
+                instruction2reg[value] = rreg;
                 break;
             case KOOPA_RBO_MUL:
-                risc_v_code += "  mul " + result_reg + ", " + lreg + ", " + rreg + "\n";
+                risc_v_code += "  mul " + rreg + ", " + rreg + ", " + lreg + "\n";
+                instruction2reg[value] = rreg;
                 break;
             case KOOPA_RBO_DIV:
-                risc_v_code += "  div " + result_reg + ", " + lreg + ", " + rreg + "\n";
+                risc_v_code += "  div " + rreg + ", " + lreg + ", " + rreg + "\n";
+                instruction2reg[value] = rreg;
                 break;
             case KOOPA_RBO_MOD:
-                risc_v_code += "  rem " + result_reg + ", " + lreg + ", " + rreg + "\n";
+                risc_v_code += "  rem " + rreg + ", " + lreg + ", " + rreg + "\n";
+                instruction2reg[value] = rreg;
                 break;
             case KOOPA_RBO_EQ:
-                risc_v_code += "  seqz " + result_reg + ", " + rreg + "\n";
+                if(lreg!="x0"){
+                    result_reg = lreg;
+                }else if(rreg!="x0"){
+                    result_reg = rreg;
+                }else{
+                    result_reg = "t"+std::to_string(temp_var_counter++);
+                }
+                instruction2reg[value] = result_reg;
+                risc_v_code += "  xor " + result_reg + ", " + rreg + ", " + lreg + "\n";  // 使用异或比较两寄存器
+                risc_v_code += "  seqz " + result_reg + ", " + result_reg + "\n";          // 检查异或结果是否为0，从而判断两寄存器内容是否相等
                 break;
             case KOOPA_RBO_NOT_EQ:
-                risc_v_code += "  snez " + result_reg + ", " + rreg + "\n";
+                if(lreg!="x0"){
+                    result_reg = lreg;
+                }else if(rreg!="x0"){
+                    result_reg = rreg;
+                }else{
+                    result_reg = "t"+std::to_string(temp_var_counter++);
+                }
+                instruction2reg[value] = result_reg;
+                risc_v_code += "  xor " + result_reg + ", " + rreg + ", " + lreg + "\n";  // 使用异或比较两寄存器
+                risc_v_code += "  snez " + result_reg + ", " + result_reg + "\n";          // 检查异或结果是否不为0，从而判断两寄存器内容是否不相等
+                break;
+            case KOOPA_RBO_OR:
+                if(lreg!="x0"){
+                    result_reg = lreg;
+                }else if(rreg!="x0"){
+                    result_reg = rreg;
+                }else{
+                    result_reg = "t"+std::to_string(temp_var_counter++);
+                }
+                instruction2reg[value] = result_reg;
+                risc_v_code += "  or " + result_reg + ", " + rreg + ", " + lreg + "\n";
+                break;
+            case KOOPA_RBO_AND:
+                if(lreg!="x0"){
+                    result_reg = lreg;
+                }else if(rreg!="x0"){
+                    result_reg = rreg;
+                }else{
+                    result_reg = "t"+std::to_string(temp_var_counter++);
+                }
+                instruction2reg[value] = result_reg;
+                risc_v_code += "  and " + result_reg + ", " + rreg + ", " + lreg + "\n";
+                break;
+            case KOOPA_RBO_LT:
+                if(lreg!="x0"){
+                    result_reg = lreg;
+                }else if(rreg!="x0"){
+                    result_reg = rreg;
+                }else{
+                    result_reg = "t"+std::to_string(temp_var_counter++);
+                }
+                instruction2reg[value] = result_reg;
+                risc_v_code += "  slt " + result_reg + ", " + lreg + ", " + rreg + "\n";
+                break;
+            case KOOPA_RBO_GT:
+                result_reg = "t"+std::to_string(temp_var_counter++);
+                instruction2reg[value] = result_reg;
+                risc_v_code += "  sgt " + result_reg + ", " + lreg + ", " + rreg + "\n";
+                break;
+            case KOOPA_RBO_LE:
+                if(lreg!="x0"){
+                    result_reg = lreg;
+                }else if(rreg!="x0"){
+                    result_reg = rreg;
+                }else{
+                    result_reg = "t"+std::to_string(temp_var_counter++);
+                }
+                instruction2reg[value] = result_reg;
+                risc_v_code += "  slt " + result_reg + ", " + rreg + ", " + lreg + "\n";  // 使用 slt 判断 rreg < lreg
+                risc_v_code += "  xori " + result_reg + ", " + result_reg + ", 1\n";      // 取反结果
+                break;
+            case KOOPA_RBO_GE:
+                if(lreg!="x0"){
+                    result_reg = lreg;
+                }else if(rreg!="x0"){
+                    result_reg = rreg;
+                }else{
+                    result_reg = "t"+std::to_string(temp_var_counter++);
+                }
+                instruction2reg[value] = result_reg;
+                risc_v_code += "  slt " + result_reg + ", " + lreg + ", " + rreg + "\n";
+                risc_v_code += "  xori " + result_reg + ", " + result_reg + ", 1\n";
                 break;
             default:
                 std::cout << "Unhandled binary operation: " << op << std::endl;

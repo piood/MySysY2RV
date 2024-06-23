@@ -4,6 +4,7 @@
 #include <memory>
 #include <cstring>
 #include <string>
+#include <fstream>
 #include "../ast/ast.hpp"
 #include "../ast/transform_koopa_raw.hpp"
 #include "../ast/generate_code.hpp"
@@ -43,8 +44,12 @@ int main(int argc, const char *argv[]) {
   cout<<IR_cstr;
   //koopa_IR2koopa_raw(IR_cstr);
   
-  
-  if(strcmp(mode, "-riscv") == 0){
+  if (strcmp(mode, "-koopa")==0){
+    FILE* output_file = fopen(output, "w");
+    fwrite(IR_cstr, sizeof(char), IR_str.size(), output_file);
+    fclose(output_file);
+  }
+  else if(strcmp(mode, "-riscv") == 0){
     string risc_str =  Koopa_IR2RISC_V(IR_cstr);
     FILE* output_file = fopen(output, "w");
     fwrite(risc_str.c_str(), sizeof(char), risc_str.size(), output_file);
