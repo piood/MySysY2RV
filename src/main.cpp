@@ -43,7 +43,6 @@ int main(int argc, const char *argv[]) {
   const char* IR_cstr = IR_str.c_str();
   cout<<IR_cstr;
   //koopa_IR2koopa_raw(IR_cstr);
-  
   if (strcmp(mode, "-koopa")==0){
     FILE* output_file = fopen(output, "w");
     fwrite(IR_cstr, sizeof(char), IR_str.size(), output_file);
