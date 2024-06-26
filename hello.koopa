@@ -1,11 +1,35 @@
 fun @main(): i32 {
 %entry:
-  %0 = add 0, 1
-  %1 = add 0, 0
-  %2 = add 0, %0
-  %3 = add 0, 4 
-  %4 = add 0, %1
-  %5 = add %4, %3
-  %6 = sub %5, %2
-  ret %6
+  @x = alloc i32
+  %0 = add 0, 21
+  @y = alloc i32
+  %1 = add 0, %0
+  store %1, @y
+  %2 = add 0, 1 
+  %3 = load @y
+  %4 = add %3, %2
+  store %4, @x
+  %5 = add 0, 147
+  @z = alloc i32
+  %6 = load @x
+  %7 = add 0, %5
+  %8 = sub %7, %6
+  store %8, @z
+  @w = alloc i32
+  %9 = load @y
+  %10 = add 0, %5
+  %11 = sub %10, %9
+  store %11, @w
+  %12 = load @w
+  %13 = add 0, 1 
+  %14 = mul %12, %13
+  %15 = add 0, 1 
+  %16 = mul %14, %15
+  %17 = add 0, 1 
+  %18 = mul %16, %17
+  store %18, @w
+  %19 = load @w
+  %20 = load @z
+  %21 = add %20, %19
+  ret %21
 }

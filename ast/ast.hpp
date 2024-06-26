@@ -3,8 +3,7 @@
 #include<cstdio>
 #include<memory>
 #include<unordered_map>
-
-static int now = 0;
+#include"symbol_list.hpp"
 
 // 所有 AST 的基类
 class BaseAST {
@@ -15,6 +14,9 @@ class BaseAST {
   virtual std::string generate_Koopa_IR() const = 0;
   virtual int Calc() const = 0;
 };
+
+static int now = 0;
+
 
 static std::unordered_map<uintptr_t, std::string> IR_reg; // 每个表达式对应的寄存器
 
@@ -93,6 +95,41 @@ class FuncTypeAST : public BaseAST {
     }
 };
 
+class LValAST : public BaseAST{
+public:
+    std::string ident;
+
+    void Dump() const override{
+        std::cout<<"LValAST { ";
+        std::cout<<ident;
+        std::cout<<" }";
+    }
+
+    std::string generate_Koopa_IR() const override{
+        std::string Koopa_IR = "";
+        if(const_val.find(ident) != const_val.end()){
+            if(var_type[ident] == 0){
+                Koopa_IR += "  %"+std::to_string(now)+" = add "+"0, "+const_reg[ident]+"\n";
+            }else{
+                Koopa_IR += "  %"+std::to_string(now)+" = load @" + ident + "\n";
+            }
+            now++;
+        }else{
+            std::cout<<"undefine variable "<<ident<<std::endl;
+        }
+        return Koopa_IR;
+    }
+
+    int Calc() const override{
+        if(const_val.find(ident) != const_val.end()){
+            return const_val[ident];
+        }else{
+            std::cout<<"undefine variable "<<ident<<std::endl;
+        }
+        return 0;
+    }
+};
+
 class StmtAST : public BaseAST {
  public:
   std::unique_ptr<BaseAST> exp;
@@ -115,12 +152,13 @@ class StmtAST : public BaseAST {
   std::string generate_Koopa_IR() const override{
     std::string Koopa_IR = "";
     if(lval){
-        Koopa_IR += lval->generate_Koopa_IR();
-        auto lval_addr = reinterpret_cast<uintptr_t>(lval.get());
-        IR_reg[lval_addr] = "%"+std::to_string(now-1);
         Koopa_IR += exp->generate_Koopa_IR();
         auto exp_addr = reinterpret_cast<uintptr_t>(exp.get());
-        Koopa_IR += "  store " + IR_reg[exp_addr] + ", " + IR_reg[lval_addr] + "\n";
+        IR_reg[exp_addr] = "%"+std::to_string(now-1);
+        //Koopa_IR += lval->generate_Koopa_IR();
+        int val = exp->Calc();
+        LValAST* LVal_ptr = dynamic_cast<LValAST*>(lval.get());
+        Koopa_IR += "  store " + IR_reg[exp_addr] + ", @" + LVal_ptr->ident + "\n";
     } else {
         Koopa_IR += exp->generate_Koopa_IR();
         auto exp_addr = reinterpret_cast<uintptr_t>(exp.get());
@@ -593,11 +631,9 @@ public:
             auto exp_addr = reinterpret_cast<uintptr_t>(exp.get());
             IR_reg[exp_addr] = "%"+std::to_string(now-1);
         } else if(lval){
-            std::string reg = lval->generate_Koopa_IR();
+            Koopa_IR += lval->generate_Koopa_IR();
             auto lval_addr = reinterpret_cast<uintptr_t>(lval.get());
-            Koopa_IR += "  %" + std::to_string(now) + " = add 0, " + reg + "\n";
-            IR_reg[lval_addr] = "%"+std::to_string(now);
-            now++;
+            IR_reg[lval_addr] = "%"+std::to_string(now-1);
         } else {
             Koopa_IR = "  %" + std::to_string(now) + " = add 0, " + std::to_string(number) +" \n";
             now++;
@@ -721,18 +757,33 @@ public:
     std::unique_ptr<BaseAST> initval;
 
     void Dump() const override{
-        std::cout << "VarDefAST { ";
-        std::cout<<ident;
-        std::cout<<", ";
-        initval->Dump();
-        std::cout<<" }";
+        if(initval){
+            std::cout << "VarDefAST { ";
+            std::cout<<ident;
+            std::cout<<", ";
+            initval->Dump();
+            std::cout<<" }";
+        } else {
+            std::cout<< "VarDefAST { ";
+            std::cout<<ident;
+            std::cout<<" }";
+        }
     }
 
     std::string generate_Koopa_IR() const override{
         std::string Koopa_IR = "";
-        Koopa_IR += initval->generate_Koopa_IR();
-        auto exp_addr = reinterpret_cast<uintptr_t>(initval.get());
-        IR_reg[exp_addr] = "%"+std::to_string(now-1);
+        if(initval){
+            Koopa_IR += "  @" + ident + " = alloc i32\n";
+            var_type[ident] = 1;
+            const_val[ident] = initval->Calc();
+            Koopa_IR += initval->generate_Koopa_IR();
+            Koopa_IR += "  store %" + std::to_string(now-1) + ", @" + ident + "\n";
+        }
+        else{
+            Koopa_IR += "  @" + ident + " = alloc i32\n";
+            var_type[ident] = 1;
+            const_val[ident] = 0;
+        }
         return Koopa_IR;
     }
 
@@ -868,6 +919,7 @@ public:
 
     int Calc() const override{
         const_val[ident] =  constinitval->Calc();
+        var_type[ident] = 0; //常量
         return const_val[ident];
     }
 };
@@ -977,37 +1029,6 @@ public:
     }
 
     int Calc() const override{
-        return 0;
-    }
-};
-
-class LValAST : public BaseAST{
-public:
-    std::string ident;
-
-    void Dump() const override{
-        std::cout<<"LValAST { ";
-        std::cout<<ident;
-        std::cout<<" }";
-    }
-
-    std::string generate_Koopa_IR() const override{
-        if(const_val.find(ident) != const_val.end()){
-            int val = const_val[ident];
-            std::string reg = const_reg[ident];
-            return reg;
-        }else{
-            std::cout<<"undefine variable "<<ident<<std::endl;
-        }
-        return "";
-    }
-
-    int Calc() const override{
-        if(const_val.find(ident) != const_val.end()){
-            return const_val[ident];
-        }else{
-            std::cout<<"undefine variable "<<ident<<std::endl;
-        }
         return 0;
     }
 };

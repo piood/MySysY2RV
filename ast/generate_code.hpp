@@ -3,12 +3,33 @@
 #include "koopa.h"
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 
 std::string risc_v_code;
 
-int temp_var_counter = 0;
+
+int st = 0; // 栈指针
 
 std::unordered_map<koopa_raw_value_t, std::string> instruction2reg;
+
+
+
+std::unordered_set<int> use_reg;
+std::string get_reg(){
+    for(int i=0;i<=6;i++){
+        if(use_reg.find(i)==use_reg.end()){
+            use_reg.insert(i);
+            return "t"+std::to_string(i);
+        }
+    }
+    std::cout<<"\n error: no available register\n";
+    return "error";
+}
+
+void release_reg(std::string reg){
+    int index = reg[1]-'0';
+    use_reg.erase(index);
+}
 
 std::string Koopa_IR2RISC_V(const char *str);
 
@@ -19,6 +40,8 @@ void generate_code(const koopa_raw_basic_block_t &bb);
 void generate_code(const koopa_raw_value_t &value);
 void generate_code(const koopa_raw_return_t &ret);
 void generate_code(const koopa_raw_integer_t &integer, const koopa_raw_value_t &value);
+void generate_code(const koopa_raw_store_t &store, const koopa_raw_value_t &value);
+void generate_code(const koopa_raw_load_t &load, const koopa_raw_value_t &value);
 
 
 std::string Koopa_IR2RISC_V(const char *str){
@@ -93,7 +116,7 @@ void generate_code(const koopa_raw_function_t &func) {
   const char* function_name = func->name;
   std::string function_name_str(function_name);
   risc_v_code += function_name_str.substr(1) + ":\n";
-
+  risc_v_code += "  addi sp, sp, -256\n";
   generate_code(func->bbs);
 }
 
@@ -105,6 +128,7 @@ void generate_code(const koopa_raw_return_t &ret) {
 
   std::string ret_reg = instruction2reg[ret_value];
   risc_v_code += "  mv a0, " + ret_reg + "\n";
+  risc_v_code += "  addi sp, sp, 256\n";
   risc_v_code += "  ret\n";
 }
 
@@ -115,10 +139,43 @@ void generate_code(const koopa_raw_integer_t &integer, const koopa_raw_value_t &
     if(int_val == 0){
         instruction2reg[value] = "x0";
     }else{
-        std::string reg = "t" + std::to_string(temp_var_counter++);
+        std::string reg = get_reg();
+        //std::string reg = "t0";
         risc_v_code += "  li " + reg + ", " + std::to_string(int_val) + "\n";
         instruction2reg[value] = reg;
     }
+}
+
+void generate_code(const koopa_raw_load_t &load, const koopa_raw_value_t &value) {
+  // 访问 load 指令
+  // ...
+    koopa_raw_value_t loa_src = load.src;
+    //std::string reg = "t0";
+    std::string reg=get_reg();
+
+    risc_v_code += "  lw "+ reg + ", " + instruction2reg[loa_src] + "(sp)\n";
+    instruction2reg[value] = reg;
+}
+
+void generate_code(const koopa_raw_store_t &store, const koopa_raw_value_t &value) {
+  // 访问 store 指令
+  // ...
+    koopa_raw_value_t sto_value = store.value;
+    koopa_raw_value_t sto_dest = store.dest;
+    if(sto_value->kind.tag == KOOPA_RVT_INTEGER){
+        risc_v_code += "   li t0, " + std::to_string(sto_value->kind.data.integer.value) + "\n";
+    }
+    if(instruction2reg.find(sto_dest)==instruction2reg.end()){
+        instruction2reg[sto_dest] = std::to_string(st);
+        st += 4;
+    }else{
+        std::cout<<"\n sto_dest: "<<instruction2reg[sto_dest]<<std::endl;
+    }
+    //risc_v_code += "  sw t0, " + instruction2reg[sto_dest] + "(sp)\n";
+    //instruction2reg[value] = "t0";
+    risc_v_code += "  sw " + instruction2reg[sto_value] + ", " + instruction2reg[sto_dest] + "(sp)\n";
+    release_reg(instruction2reg[sto_value]);
+    instruction2reg[value] = instruction2reg[sto_dest];
 }
 
 void generate_code(const koopa_raw_value_t &value){
@@ -135,6 +192,15 @@ void generate_code(const koopa_raw_value_t &value){
     else if(kind.tag==KOOPA_RVT_INTEGER){
         // 访问 integer 指令
         generate_code(kind.data.integer, value);
+    }
+    else if(kind.tag==KOOPA_RVT_ALLOC){
+        instruction2reg[value] = std::to_string(st);
+        st+=4;
+        std::cout<<"stack pointer: "<<st<<std::endl;
+    }else if(kind.tag==KOOPA_RVT_LOAD){ 
+        generate_code(kind.data.load, value);
+    }else if(kind.tag==KOOPA_RVT_STORE){
+        generate_code(kind.data.store, value);
     }
     else if(kind.tag==KOOPA_RVT_BINARY){
         koopa_raw_binary_t binary = kind.data.binary;
@@ -161,7 +227,7 @@ void generate_code(const koopa_raw_value_t &value){
                 }else if(rreg!="x0"){
                     result_reg = rreg;
                 }else{
-                    result_reg = "t"+std::to_string(temp_var_counter++);
+                    result_reg = get_reg();
                 }
                 instruction2reg[value] = result_reg;
                 risc_v_code += "  add " + result_reg + ", " + rreg + ", " + lreg + "\n";
@@ -188,7 +254,7 @@ void generate_code(const koopa_raw_value_t &value){
                 }else if(rreg!="x0"){
                     result_reg = rreg;
                 }else{
-                    result_reg = "t"+std::to_string(temp_var_counter++);
+                    result_reg = get_reg();
                 }
                 instruction2reg[value] = result_reg;
                 risc_v_code += "  xor " + result_reg + ", " + rreg + ", " + lreg + "\n";  // 使用异或比较两寄存器
@@ -200,7 +266,7 @@ void generate_code(const koopa_raw_value_t &value){
                 }else if(rreg!="x0"){
                     result_reg = rreg;
                 }else{
-                    result_reg = "t"+std::to_string(temp_var_counter++);
+                    result_reg = get_reg();
                 }
                 instruction2reg[value] = result_reg;
                 risc_v_code += "  xor " + result_reg + ", " + rreg + ", " + lreg + "\n";  // 使用异或比较两寄存器
@@ -212,7 +278,7 @@ void generate_code(const koopa_raw_value_t &value){
                 }else if(rreg!="x0"){
                     result_reg = rreg;
                 }else{
-                    result_reg = "t"+std::to_string(temp_var_counter++);
+                    result_reg = get_reg();
                 }
                 instruction2reg[value] = result_reg;
                 risc_v_code += "  or " + result_reg + ", " + rreg + ", " + lreg + "\n";
@@ -223,7 +289,7 @@ void generate_code(const koopa_raw_value_t &value){
                 }else if(rreg!="x0"){
                     result_reg = rreg;
                 }else{
-                    result_reg = "t"+std::to_string(temp_var_counter++);
+                    result_reg = get_reg();
                 }
                 instruction2reg[value] = result_reg;
                 risc_v_code += "  and " + result_reg + ", " + rreg + ", " + lreg + "\n";
@@ -234,13 +300,13 @@ void generate_code(const koopa_raw_value_t &value){
                 }else if(rreg!="x0"){
                     result_reg = rreg;
                 }else{
-                    result_reg = "t"+std::to_string(temp_var_counter++);
+                    result_reg = get_reg();
                 }
                 instruction2reg[value] = result_reg;
                 risc_v_code += "  slt " + result_reg + ", " + lreg + ", " + rreg + "\n";
                 break;
             case KOOPA_RBO_GT:
-                result_reg = "t"+std::to_string(temp_var_counter++);
+                result_reg = get_reg();
                 instruction2reg[value] = result_reg;
                 risc_v_code += "  sgt " + result_reg + ", " + lreg + ", " + rreg + "\n";
                 break;
@@ -250,7 +316,7 @@ void generate_code(const koopa_raw_value_t &value){
                 }else if(rreg!="x0"){
                     result_reg = rreg;
                 }else{
-                    result_reg = "t"+std::to_string(temp_var_counter++);
+                    result_reg = get_reg();
                 }
                 instruction2reg[value] = result_reg;
                 risc_v_code += "  slt " + result_reg + ", " + rreg + ", " + lreg + "\n";  // 使用 slt 判断 rreg < lreg
@@ -262,7 +328,7 @@ void generate_code(const koopa_raw_value_t &value){
                 }else if(rreg!="x0"){
                     result_reg = rreg;
                 }else{
-                    result_reg = "t"+std::to_string(temp_var_counter++);
+                    result_reg = get_reg();
                 }
                 instruction2reg[value] = result_reg;
                 risc_v_code += "  slt " + result_reg + ", " + lreg + ", " + rreg + "\n";
