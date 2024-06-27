@@ -92,16 +92,37 @@ FuncType
   ;
 
 Stmt
-  : LVal '=' Exp ';' {
+  : ';' {
     auto ast = new StmtAST();
-    ast->lval = unique_ptr<BaseAST>($1);
-    ast->exp = unique_ptr<BaseAST>($3);
+    ast->type = 4;
     $$ = ast;
   }
   | RETURN Exp ';' {
     auto ast = new StmtAST();
     ast->exp = unique_ptr<BaseAST>($2);
+    ast->type = 0;
     $$ = ast;
+  }
+  | LVal '=' Exp ';' {
+    auto ast = new StmtAST();
+    ast->lval = unique_ptr<BaseAST>($1);
+    ast->exp = unique_ptr<BaseAST>($3);
+    ast->type = 1;
+    $$ = ast;
+  }
+  | Exp ';' {
+    auto ast = new StmtAST();
+    ast->exp = unique_ptr<BaseAST>($1);
+    ast->type = 2;
+  }
+  | Block {
+    auto ast = new StmtAST();
+    ast->block = unique_ptr<BaseAST>($1);
+    ast->type = 3;
+  }
+  | RETURN ';' {
+    auto ast = new StmtAST();
+    ast->type = 5;
   }
   ;
 
@@ -345,6 +366,12 @@ Block
   : '{' BlockItemList '}' {
     auto ast = new BlockAST();
     ast->blockitemlist = unique_ptr<BaseAST>($2);
+    ast->type = 0;
+    $$ = ast;
+  }
+  | '{' '}' {
+    auto ast = new BlockAST();
+    ast->type = 1;
     $$ = ast;
   }
   ;

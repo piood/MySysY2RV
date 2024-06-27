@@ -42,7 +42,6 @@ int main(int argc, const char *argv[]) {
   string IR_str = ast->generate_Koopa_IR();
   const char* IR_cstr = IR_str.c_str();
   cout<<IR_cstr;
-  //koopa_IR2koopa_raw(IR_cstr);
   if (strcmp(mode, "-koopa")==0){
     FILE* output_file = fopen(output, "w");
     fwrite(IR_cstr, sizeof(char), IR_str.size(), output_file);
@@ -54,6 +53,6 @@ int main(int argc, const char *argv[]) {
     fwrite(risc_str.c_str(), sizeof(char), risc_str.size(), output_file);
     fclose(output_file);
   }
-  
+
   return 0;
 }

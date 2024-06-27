@@ -5,32 +5,6 @@
 #include <unordered_map>
 #include <unordered_set>
 
-std::string risc_v_code;
-
-
-int st = 0; // 栈指针
-
-std::unordered_map<koopa_raw_value_t, std::string> instruction2reg;
-
-
-
-std::unordered_set<int> use_reg;
-std::string get_reg(){
-    for(int i=0;i<=6;i++){
-        if(use_reg.find(i)==use_reg.end()){
-            use_reg.insert(i);
-            return "t"+std::to_string(i);
-        }
-    }
-    std::cout<<"\n error: no available register\n";
-    return "error";
-}
-
-void release_reg(std::string reg){
-    int index = reg[1]-'0';
-    use_reg.erase(index);
-}
-
 std::string Koopa_IR2RISC_V(const char *str);
 
 void generate_code(const koopa_raw_program_t &program);
@@ -42,6 +16,71 @@ void generate_code(const koopa_raw_return_t &ret);
 void generate_code(const koopa_raw_integer_t &integer, const koopa_raw_value_t &value);
 void generate_code(const koopa_raw_store_t &store, const koopa_raw_value_t &value);
 void generate_code(const koopa_raw_load_t &load, const koopa_raw_value_t &value);
+
+std::string binary_get_reg_release_unused_reg(std::string lreg, std::string rreg);
+std::string get_reg();
+void release_reg(std::string reg);
+void get_program_instruction_time(const koopa_raw_program_t &program);
+
+std::string risc_v_code;
+
+
+int st = 0; // 栈指针
+
+std::unordered_map<koopa_raw_value_t, std::string> instruction2reg;  // 指令运行结果存放的寄存器的映射
+
+std::unordered_map<koopa_raw_value_t, int> instruction_time; // 记录指令运行结果存放的寄存器的使用次数
+
+std::unordered_map<std::string, koopa_raw_value_t> reg2instruction; // 记录寄存器对应的指令
+
+
+std::unordered_set<int> use_reg;
+
+std::string get_reg(){
+    for(int i=0;i<=6;i++){
+        if(use_reg.find(i)==use_reg.end()){
+            use_reg.insert(i);
+            return "t"+std::to_string(i);
+        }
+    }
+    for(int i=0;i<=7;i++){
+        if(use_reg.find(i+7)==use_reg.end()){
+            use_reg.insert(i+7);
+            return "a"+std::to_string(i);
+        }
+    }
+    std::cout<<"no reg to use"<<std::endl;
+    return "error";
+}
+
+std::string binary_get_reg_release_unused_reg(std::string lreg, std::string rreg){
+    std::string result_reg;
+    if(lreg!="x0"){
+        result_reg = lreg;
+    }else if(rreg!="x0"){
+        result_reg = rreg;
+    }else{
+        result_reg = get_reg();
+    }
+    if(result_reg!=lreg){
+        release_reg(lreg);
+    }
+    if(result_reg!=rreg){
+        release_reg(rreg);
+    }
+    return result_reg;
+}
+
+void release_reg(std::string reg){
+    if(reg=="x0") return;
+    int index = reg[1]-'0';
+    char head = reg[0];
+    if(head=='t')
+        use_reg.erase(index);
+    else if(head=='a'){
+        use_reg.erase(index+7);
+    }
+}
 
 
 std::string Koopa_IR2RISC_V(const char *str){
@@ -222,114 +261,70 @@ void generate_code(const koopa_raw_value_t &value){
         std::string result_reg;
         switch (op) {
             case KOOPA_RBO_ADD:
-                if(lreg!="x0"){
-                    result_reg = lreg;
-                }else if(rreg!="x0"){
-                    result_reg = rreg;
-                }else{
-                    result_reg = get_reg();
-                }
+                result_reg = binary_get_reg_release_unused_reg(lreg, rreg);
                 instruction2reg[value] = result_reg;
                 risc_v_code += "  add " + result_reg + ", " + rreg + ", " + lreg + "\n";
                 break;
             case KOOPA_RBO_SUB:
                 risc_v_code += "  sub " + rreg + ", " + lreg + ", " + rreg + "\n";
                 instruction2reg[value] = rreg;
+                release_reg(lreg);
                 break;
             case KOOPA_RBO_MUL:
                 risc_v_code += "  mul " + rreg + ", " + rreg + ", " + lreg + "\n";
                 instruction2reg[value] = rreg;
+                release_reg(lreg);
                 break;
             case KOOPA_RBO_DIV:
                 risc_v_code += "  div " + rreg + ", " + lreg + ", " + rreg + "\n";
                 instruction2reg[value] = rreg;
+                release_reg(lreg);
                 break;
             case KOOPA_RBO_MOD:
                 risc_v_code += "  rem " + rreg + ", " + lreg + ", " + rreg + "\n";
                 instruction2reg[value] = rreg;
+                release_reg(lreg);
                 break;
             case KOOPA_RBO_EQ:
-                if(lreg!="x0"){
-                    result_reg = lreg;
-                }else if(rreg!="x0"){
-                    result_reg = rreg;
-                }else{
-                    result_reg = get_reg();
-                }
+                result_reg = binary_get_reg_release_unused_reg(lreg, rreg);
                 instruction2reg[value] = result_reg;
                 risc_v_code += "  xor " + result_reg + ", " + rreg + ", " + lreg + "\n";  // 使用异或比较两寄存器
                 risc_v_code += "  seqz " + result_reg + ", " + result_reg + "\n";          // 检查异或结果是否为0，从而判断两寄存器内容是否相等
                 break;
             case KOOPA_RBO_NOT_EQ:
-                if(lreg!="x0"){
-                    result_reg = lreg;
-                }else if(rreg!="x0"){
-                    result_reg = rreg;
-                }else{
-                    result_reg = get_reg();
-                }
+                result_reg = binary_get_reg_release_unused_reg(lreg, rreg);
                 instruction2reg[value] = result_reg;
                 risc_v_code += "  xor " + result_reg + ", " + rreg + ", " + lreg + "\n";  // 使用异或比较两寄存器
                 risc_v_code += "  snez " + result_reg + ", " + result_reg + "\n";          // 检查异或结果是否不为0，从而判断两寄存器内容是否不相等
                 break;
             case KOOPA_RBO_OR:
-                if(lreg!="x0"){
-                    result_reg = lreg;
-                }else if(rreg!="x0"){
-                    result_reg = rreg;
-                }else{
-                    result_reg = get_reg();
-                }
+                result_reg = binary_get_reg_release_unused_reg(lreg, rreg);
                 instruction2reg[value] = result_reg;
                 risc_v_code += "  or " + result_reg + ", " + rreg + ", " + lreg + "\n";
                 break;
             case KOOPA_RBO_AND:
-                if(lreg!="x0"){
-                    result_reg = lreg;
-                }else if(rreg!="x0"){
-                    result_reg = rreg;
-                }else{
-                    result_reg = get_reg();
-                }
+                result_reg = binary_get_reg_release_unused_reg(lreg, rreg);
                 instruction2reg[value] = result_reg;
                 risc_v_code += "  and " + result_reg + ", " + rreg + ", " + lreg + "\n";
                 break;
             case KOOPA_RBO_LT:
-                if(lreg!="x0"){
-                    result_reg = lreg;
-                }else if(rreg!="x0"){
-                    result_reg = rreg;
-                }else{
-                    result_reg = get_reg();
-                }
+                result_reg = binary_get_reg_release_unused_reg(lreg, rreg);
                 instruction2reg[value] = result_reg;
                 risc_v_code += "  slt " + result_reg + ", " + lreg + ", " + rreg + "\n";
                 break;
             case KOOPA_RBO_GT:
-                result_reg = get_reg();
+                result_reg = binary_get_reg_release_unused_reg(lreg, rreg);
                 instruction2reg[value] = result_reg;
                 risc_v_code += "  sgt " + result_reg + ", " + lreg + ", " + rreg + "\n";
                 break;
             case KOOPA_RBO_LE:
-                if(lreg!="x0"){
-                    result_reg = lreg;
-                }else if(rreg!="x0"){
-                    result_reg = rreg;
-                }else{
-                    result_reg = get_reg();
-                }
+                result_reg = binary_get_reg_release_unused_reg(lreg, rreg);
                 instruction2reg[value] = result_reg;
                 risc_v_code += "  slt " + result_reg + ", " + rreg + ", " + lreg + "\n";  // 使用 slt 判断 rreg < lreg
                 risc_v_code += "  xori " + result_reg + ", " + result_reg + ", 1\n";      // 取反结果
                 break;
             case KOOPA_RBO_GE:
-                if(lreg!="x0"){
-                    result_reg = lreg;
-                }else if(rreg!="x0"){
-                    result_reg = rreg;
-                }else{
-                    result_reg = get_reg();
-                }
+                result_reg = binary_get_reg_release_unused_reg(lreg, rreg);
                 instruction2reg[value] = result_reg;
                 risc_v_code += "  slt " + result_reg + ", " + lreg + ", " + rreg + "\n";
                 risc_v_code += "  xori " + result_reg + ", " + result_reg + ", 1\n";

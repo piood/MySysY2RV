@@ -1,35 +1,132 @@
 fun @main(): i32 {
 %entry:
-  @x = alloc i32
-  %0 = add 0, 21
-  @y = alloc i32
-  %1 = add 0, %0
-  store %1, @y
-  %2 = add 0, 1 
-  %3 = load @y
+  @COMPILER__a_1 = alloc i32
+  %0 = add 0, 1 
+  store %0, @COMPILER__a_1
+  @COMPILER__sum_1 = alloc i32
+  %1 = add 0, 0 
+  store %1, @COMPILER__sum_1
+  %2 = add 0, 2 
+  %3 = load @COMPILER__a_1
   %4 = add %3, %2
-  store %4, @x
-  %5 = add 0, 147
-  @z = alloc i32
-  %6 = load @x
-  %7 = add 0, %5
-  %8 = sub %7, %6
-  store %8, @z
-  @w = alloc i32
-  %9 = load @y
-  %10 = add 0, %5
-  %11 = sub %10, %9
-  store %11, @w
-  %12 = load @w
-  %13 = add 0, 1 
-  %14 = mul %12, %13
-  %15 = add 0, 1 
-  %16 = mul %14, %15
-  %17 = add 0, 1 
-  %18 = mul %16, %17
-  store %18, @w
-  %19 = load @w
-  %20 = load @z
+  store %4, @COMPILER__a_1
+  @COMPILER__b_2 = alloc i32
+  %5 = add 0, 3 
+  %6 = load @COMPILER__a_1
+  %7 = add %6, %5
+  store %7, @COMPILER__b_2
+  %8 = add 0, 4 
+  %9 = load @COMPILER__b_2
+  %10 = add %9, %8
+  store %10, @COMPILER__b_2
+  %11 = load @COMPILER__b_2
+  %12 = load @COMPILER__a_1
+  %13 = load @COMPILER__sum_1
+  %14 = add %13, %12
+  %15 = add %14, %11
+  store %15, @COMPILER__sum_1
+  %16 = add 0, 5 
+  %17 = load @COMPILER__b_2
+  %18 = add %17, %16
+  store %18, @COMPILER__b_2
+  @COMPILER__c_3 = alloc i32
+  %19 = add 0, 6 
+  %20 = load @COMPILER__b_2
   %21 = add %20, %19
-  ret %21
+  store %21, @COMPILER__c_3
+  %22 = load @COMPILER__c_3
+  %23 = load @COMPILER__a_1
+  %24 = add %23, %22
+  store %24, @COMPILER__a_1
+  %25 = load @COMPILER__c_3
+  %26 = load @COMPILER__b_2
+  %27 = load @COMPILER__a_1
+  %28 = load @COMPILER__sum_1
+  %29 = add %28, %27
+  %30 = add %29, %26
+  %31 = add %30, %25
+  store %31, @COMPILER__sum_1
+  %32 = load @COMPILER__a_1
+  %33 = load @COMPILER__b_2
+  %34 = add %33, %32
+  store %34, @COMPILER__b_2
+  @COMPILER__a_4 = alloc i32
+  %35 = add 0, 7 
+  %36 = load @COMPILER__c_3
+  %37 = add %36, %35
+  store %37, @COMPILER__a_4
+  %38 = add 0, 8 
+  %39 = load @COMPILER__a_4
+  %40 = add %39, %38
+  store %40, @COMPILER__a_4
+  %41 = load @COMPILER__c_3
+  %42 = load @COMPILER__b_2
+  %43 = load @COMPILER__a_4
+  %44 = load @COMPILER__sum_1
+  %45 = add %44, %43
+  %46 = add %45, %42
+  %47 = add %46, %41
+  store %47, @COMPILER__sum_1
+  %48 = load @COMPILER__a_4
+  %49 = load @COMPILER__b_2
+  %50 = add %49, %48
+  store %50, @COMPILER__b_2
+  @COMPILER__b_5 = alloc i32
+  %51 = add 0, 9 
+  %52 = load @COMPILER__c_3
+  %53 = add %52, %51
+  store %53, @COMPILER__b_5
+  %54 = add 0, 10 
+  %55 = load @COMPILER__a_4
+  %56 = add %55, %54
+  store %56, @COMPILER__a_4
+  %57 = add 0, 12 
+  %58 = load @COMPILER__b_5
+  %59 = add %58, %57
+  store %59, @COMPILER__b_5
+  %60 = load @COMPILER__c_3
+  %61 = load @COMPILER__b_5
+  %62 = add 0, 11
+  %63 = load @COMPILER__sum_1
+  %64 = add %63, %62
+  %65 = add %64, %61
+  %66 = add %65, %60
+  store %66, @COMPILER__sum_1
+  %67 = load @COMPILER__b_5
+  %68 = load @COMPILER__c_3
+  %69 = add %68, %67
+  store %69, @COMPILER__c_3
+  @COMPILER__c_6 = alloc i32
+  %70 = add 0, 13 
+  %71 = load @COMPILER__b_5
+  %72 = add %71, %70
+  store %72, @COMPILER__c_6
+  %73 = add 0, 11
+  %74 = load @COMPILER__c_6
+  %75 = add %74, %73
+  store %75, @COMPILER__c_6
+  %76 = load @COMPILER__c_6
+  %77 = load @COMPILER__b_5
+  %78 = add 0, 11
+  %79 = load @COMPILER__sum_1
+  %80 = add %79, %78
+  %81 = add %80, %77
+  %82 = add %81, %76
+  store %82, @COMPILER__sum_1
+  %83 = load @COMPILER__c_3
+  %84 = load @COMPILER__sum_1
+  %85 = sub %84, %83
+  store %85, @COMPILER__sum_1
+  %86 = load @COMPILER__b_2
+  %87 = load @COMPILER__sum_1
+  %88 = sub %87, %86
+  store %88, @COMPILER__sum_1
+  %89 = load @COMPILER__a_1
+  %90 = load @COMPILER__sum_1
+  %91 = sub %90, %89
+  store %91, @COMPILER__sum_1
+  %92 = load @COMPILER__sum_1
+  %93 = add 0, 77 
+  %94 = mod %92, %93
+  ret %94
 }
