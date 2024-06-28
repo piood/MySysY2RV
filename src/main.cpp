@@ -38,7 +38,6 @@ int main(int argc, const char *argv[]) {
   assert(!ret);
 
   // 输出解析得到的 AST, 其实就是个字符串
-  ast->Dump();
   string IR_str = ast->generate_Koopa_IR();
   const char* IR_cstr = IR_str.c_str();
   cout<<IR_cstr;

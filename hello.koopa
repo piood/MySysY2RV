@@ -1,132 +1,102 @@
 fun @main(): i32 {
 %entry:
-  @COMPILER__a_1 = alloc i32
+  @COMPILER__a__0 = alloc i32
   %0 = add 0, 1 
-  store %0, @COMPILER__a_1
-  @COMPILER__sum_1 = alloc i32
-  %1 = add 0, 0 
-  store %1, @COMPILER__sum_1
-  %2 = add 0, 2 
-  %3 = load @COMPILER__a_1
-  %4 = add %3, %2
-  store %4, @COMPILER__a_1
-  @COMPILER__b_2 = alloc i32
-  %5 = add 0, 3 
-  %6 = load @COMPILER__a_1
-  %7 = add %6, %5
-  store %7, @COMPILER__b_2
-  %8 = add 0, 4 
-  %9 = load @COMPILER__b_2
-  %10 = add %9, %8
-  store %10, @COMPILER__b_2
-  %11 = load @COMPILER__b_2
-  %12 = load @COMPILER__a_1
-  %13 = load @COMPILER__sum_1
-  %14 = add %13, %12
-  %15 = add %14, %11
-  store %15, @COMPILER__sum_1
-  %16 = add 0, 5 
-  %17 = load @COMPILER__b_2
-  %18 = add %17, %16
-  store %18, @COMPILER__b_2
-  @COMPILER__c_3 = alloc i32
-  %19 = add 0, 6 
-  %20 = load @COMPILER__b_2
-  %21 = add %20, %19
-  store %21, @COMPILER__c_3
-  %22 = load @COMPILER__c_3
-  %23 = load @COMPILER__a_1
-  %24 = add %23, %22
-  store %24, @COMPILER__a_1
-  %25 = load @COMPILER__c_3
-  %26 = load @COMPILER__b_2
-  %27 = load @COMPILER__a_1
-  %28 = load @COMPILER__sum_1
-  %29 = add %28, %27
-  %30 = add %29, %26
-  %31 = add %30, %25
-  store %31, @COMPILER__sum_1
-  %32 = load @COMPILER__a_1
-  %33 = load @COMPILER__b_2
-  %34 = add %33, %32
-  store %34, @COMPILER__b_2
-  @COMPILER__a_4 = alloc i32
-  %35 = add 0, 7 
-  %36 = load @COMPILER__c_3
-  %37 = add %36, %35
-  store %37, @COMPILER__a_4
-  %38 = add 0, 8 
-  %39 = load @COMPILER__a_4
-  %40 = add %39, %38
-  store %40, @COMPILER__a_4
-  %41 = load @COMPILER__c_3
-  %42 = load @COMPILER__b_2
-  %43 = load @COMPILER__a_4
-  %44 = load @COMPILER__sum_1
+  %1 = add 0, 2 
+  %2 = add 0, 3 
+  %3 = ne %1, 0
+  %4 = ne %2, 0
+  %5 = and %4, %3
+  %6 = or %0, %5
+  %7 = ne %6, 0
+  store %7, @COMPILER__a__0
+  @COMPILER__b__0 = alloc i32
+  %8 = add 0, 0 
+  %9 = add 0, 1 
+  %10 = ne %8, 0
+  %11 = ne %9, 0
+  %12 = and %11, %10
+  %13 = add 0, 0 
+  %14 = or %12, %13
+  %15 = ne %14, 0
+  store %15, @COMPILER__b__0
+  @COMPILER__c__0 = alloc i32
+  %16 = add 0, 1 
+  %17 = add 0, 0 
+  %18 = ne %16, 0
+  %19 = ne %17, 0
+  %20 = and %19, %18
+  %21 = add 0, 1 
+  %22 = or %20, %21
+  %23 = ne %22, 0
+  %24 = add 0, 4 
+  %25 = mul %23, %24
+  store %25, @COMPILER__c__0
+  @COMPILER__d__0 = alloc i32
+  %26 = add 0, 5 
+  store %26, @COMPILER__d__0
+  %27 = load @COMPILER__a__0
+  %28 = add 0, 1 
+  %29 = eq %27, %28
+  %30 = load @COMPILER__a__0
+  %31 = add 0, 2 
+  %32 = eq %30, %31
+  %33 = or %29, %32
+  %34 = ne %33, 0
+	br %34, %then_1, %end_1
+
+%then_1:
+	jump %end_1
+
+%end_1:
+  %35 = load @COMPILER__b__0
+  %36 = add 0, 0 
+  %37 = eq %35, %36
+  %38 = load @COMPILER__b__0
+  %39 = add 0, 1 
+  %40 = eq %38, %39
+  %41 = or %37, %40
+  %42 = ne %41, 0
+	br %42, %then_2, %else_2
+
+%then_2:
+  %43 = add 0, 1 
+  %44 = load @COMPILER__d__0
   %45 = add %44, %43
-  %46 = add %45, %42
-  %47 = add %46, %41
-  store %47, @COMPILER__sum_1
-  %48 = load @COMPILER__a_4
-  %49 = load @COMPILER__b_2
-  %50 = add %49, %48
-  store %50, @COMPILER__b_2
-  @COMPILER__b_5 = alloc i32
-  %51 = add 0, 9 
-  %52 = load @COMPILER__c_3
-  %53 = add %52, %51
-  store %53, @COMPILER__b_5
-  %54 = add 0, 10 
-  %55 = load @COMPILER__a_4
-  %56 = add %55, %54
-  store %56, @COMPILER__a_4
-  %57 = add 0, 12 
-  %58 = load @COMPILER__b_5
-  %59 = add %58, %57
-  store %59, @COMPILER__b_5
-  %60 = load @COMPILER__c_3
-  %61 = load @COMPILER__b_5
-  %62 = add 0, 11
-  %63 = load @COMPILER__sum_1
-  %64 = add %63, %62
-  %65 = add %64, %61
-  %66 = add %65, %60
-  store %66, @COMPILER__sum_1
-  %67 = load @COMPILER__b_5
-  %68 = load @COMPILER__c_3
-  %69 = add %68, %67
-  store %69, @COMPILER__c_3
-  @COMPILER__c_6 = alloc i32
-  %70 = add 0, 13 
-  %71 = load @COMPILER__b_5
-  %72 = add %71, %70
-  store %72, @COMPILER__c_6
-  %73 = add 0, 11
-  %74 = load @COMPILER__c_6
-  %75 = add %74, %73
-  store %75, @COMPILER__c_6
-  %76 = load @COMPILER__c_6
-  %77 = load @COMPILER__b_5
-  %78 = add 0, 11
-  %79 = load @COMPILER__sum_1
-  %80 = add %79, %78
-  %81 = add %80, %77
-  %82 = add %81, %76
-  store %82, @COMPILER__sum_1
-  %83 = load @COMPILER__c_3
-  %84 = load @COMPILER__sum_1
-  %85 = sub %84, %83
-  store %85, @COMPILER__sum_1
-  %86 = load @COMPILER__b_2
-  %87 = load @COMPILER__sum_1
-  %88 = sub %87, %86
-  store %88, @COMPILER__sum_1
-  %89 = load @COMPILER__a_1
-  %90 = load @COMPILER__sum_1
-  %91 = sub %90, %89
-  store %91, @COMPILER__sum_1
-  %92 = load @COMPILER__sum_1
-  %93 = add 0, 77 
-  %94 = mod %92, %93
-  ret %94
+  store %45, @COMPILER__d__0
+	jump %end_2
+
+%else_2:
+	jump %end_2
+
+%end_2:
+  %46 = load @COMPILER__a__0
+  %47 = load @COMPILER__b__0
+  %48 = ne %46, 0
+  %49 = ne %47, 0
+  %50 = and %49, %48
+  %51 = load @COMPILER__c__0
+  %52 = load @COMPILER__d__0
+  %53 = ne %51, 0
+  %54 = ne %52, 0
+  %55 = and %54, %53
+  %56 = or %50, %55
+  %57 = ne %56, 0
+	br %57, %then_3, %end_3
+
+%then_3:
+  %58 = add 0, 1
+  %59 = load @COMPILER__d__0
+  %60 = add %59, %58
+  store %60, @COMPILER__d__0
+	jump %end_3
+
+%end_3:
+  %61 = load @COMPILER__d__0
+  %62 = load @COMPILER__c__0
+  %63 = eq 0, %62 
+  %64 = or %61, %63
+  %65 = ne %64, 0
+  ret %65
+
 }

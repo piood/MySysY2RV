@@ -3,37 +3,39 @@
 #include<cstdio>
 #include<memory>
 #include<unordered_map>
-#include"symbol_list.hpp"
+
 
 // 所有 AST 的基类
 class BaseAST {
  public:
   virtual ~BaseAST() = default;
-
-  virtual void Dump() const = 0;
   virtual std::string generate_Koopa_IR() const = 0;
   virtual int Calc() const = 0;
 };
 
 static int now = 0;
 
-
 static std::unordered_map<uintptr_t, std::string> IR_reg; // 每个表达式对应的寄存器
 
 static std::unordered_map<std::string, int> const_val; // 常量表 常量->值
 static std::unordered_map<std::string, std::string> const_reg; // 常量表 常量->寄存器
 
-static std::unordered_map<std::string, int> var_type; 
+static std::unordered_map<std::string, int> var_type; // 变量表 变量->类型 0:常量 1:变量
 
-static int depth = 0, nowdepth = depth;
-static std::unordered_map<int, int> f; // 嵌套 当前深度->上一深度
+static std::unordered_map<std::string, std::string> f; // 嵌套 当前深度->上一深度
+
+static int if_cnt = 0; // if调整指令计数，方便生成if label
+static std::unordered_map<std::string, bool> be_end_bl; // 记录当前block是否已经结束，是否需要生成返回指令
+
+static std::string depth_str = ""; // 当前深度的字符串形式
+static std::string nowdepth_str = ""; // 当前深度的字符串形式
 
 static std::string Get_Identifier(std::string ident){
-    int tempdepth = nowdepth; //获取当前深度
-    while(var_type.find("COMPILER__" + ident+"_"+std::to_string(tempdepth)) == var_type.end()){
-        tempdepth = f[tempdepth];
+    std::string tempdepth_str = depth_str; //获取当前深度
+    while(var_type.find("COMPILER__" + ident+"_"+tempdepth_str) == var_type.end()){
+        tempdepth_str = f[tempdepth_str];
     } //循环向上获取深度
-    return "COMPILER__" + ident + "_"+ std::to_string(tempdepth) ;
+    return "COMPILER__" + ident + "_" + tempdepth_str;
 }
 
 // CompUnit 是 BaseAST
@@ -41,12 +43,6 @@ class CompUnitAST : public BaseAST {
  public:
   // 用智能指针管理对象
   std::unique_ptr<BaseAST> func_def;
-
-  void Dump() const override{
-    std::cout << "CompUnitAST { ";
-    func_def->Dump();
-    std::cout<<" }";
-  }
 
   std::string generate_Koopa_IR() const override{
     return func_def->generate_Koopa_IR();
@@ -63,14 +59,6 @@ class FuncDefAST : public BaseAST {
   std::unique_ptr<BaseAST> func_type;
   std::string ident;
   std::unique_ptr<BaseAST> block;
-
-  void Dump() const override{
-    std::cout << "FuncDefAST { ";
-    func_type->Dump();
-    std::cout << ", " << ident << ", ";
-    block->Dump();
-    std::cout<<" }\n";
-  }
 
   std::string generate_Koopa_IR() const override{
     std::string Koopa_IR = "";
@@ -92,12 +80,6 @@ class FuncTypeAST : public BaseAST {
  public:
   std::string INT;
 
-  void Dump() const override{
-    std::cout<<"FuncTypeAST { ";
-    std::cout<<INT;
-    std::cout<<" }";
-  }
-
   std::string generate_Koopa_IR() const override{
     return "i32 ";
   }
@@ -110,12 +92,6 @@ class FuncTypeAST : public BaseAST {
 class LValAST : public BaseAST{
 public:
     std::string ident;
-
-    void Dump() const override{
-        std::cout<<"LValAST { ";
-        std::cout<<ident;
-        std::cout<<" }";
-    }
 
     std::string generate_Koopa_IR() const override{
         std::string Koopa_IR = "";
@@ -146,35 +122,12 @@ class StmtAST : public BaseAST {
   std::unique_ptr<BaseAST> exp;
   std::unique_ptr<BaseAST> lval;
   std::unique_ptr<BaseAST> block;
-  int type;
+  std::unique_ptr<BaseAST> if_blockitem;
+  std::unique_ptr<BaseAST> else_blockitem;
+  std::unique_ptr<BaseAST> if_blockitemlist;
+  std::unique_ptr<BaseAST> else_blockitemlist;
 
-  void Dump() const override{
-    if(type==0){
-        std::cout << "StmtAST { ";
-        exp->Dump();
-        std::cout<<" }";
-    }else if(type==1){
-        std::cout << "StmtAST { ";
-        lval->Dump();
-        std::cout<<" = ";
-        exp->Dump();
-        std::cout<<" }";
-    }else if(type==2){
-        std::cout << "StmtAST { ";
-        exp->Dump();
-        std::cout<<" }";
-    }else if(type==3){
-        std::cout<<"StmtAST { ";
-        block->Dump();
-        std::cout<<" }";
-    }else if(type==4){
-        std::cout<<"StmtAST { ";
-        std::cout<<" }";
-    }else if(type==5){
-        std::cout<<"StmtAST { ";
-        std::cout<<" }";
-    }
-  } 
+  int type;
 
   std::string generate_Koopa_IR() const override{
     std::string Koopa_IR = "";
@@ -192,10 +145,12 @@ class StmtAST : public BaseAST {
         Koopa_IR += "  store " + IR_reg[exp_addr] + ", @" + Identifier + "\n";
         
     } else if(type==0) {
+        if(be_end_bl[depth_str]) return Koopa_IR;
         Koopa_IR += exp->generate_Koopa_IR();
         auto exp_addr = reinterpret_cast<uintptr_t>(exp.get());
         IR_reg[exp_addr] = "%"+std::to_string(now-1);
-        Koopa_IR += "  ret " + IR_reg[exp_addr] + "\n";
+        Koopa_IR += "  ret " + IR_reg[exp_addr] + "\n\n";
+        be_end_bl[depth_str] = true;
     } else if(type==2){
         Koopa_IR += exp->generate_Koopa_IR();
     } else if(type==3){
@@ -204,6 +159,67 @@ class StmtAST : public BaseAST {
         Koopa_IR += "";
     } else if(type==5){
         Koopa_IR += "";
+    } else if(type==6||type==7){ // if block
+        if(be_end_bl[depth_str]) return Koopa_IR; // 如果当前block已经结束，不生成if
+        if_cnt++;
+        int now_if = if_cnt;
+
+        Koopa_IR += exp->generate_Koopa_IR();
+
+        Koopa_IR += "\tbr %" + std::to_string(now-1) + ", %then_" + std::to_string(now_if) + ", %end_" + std::to_string(now_if) + "\n\n";
+        Koopa_IR += "%then_" + std::to_string(now_if) + ":\n";
+
+        depth_str += "_1"+std::to_string(now_if);
+        f[depth_str] = nowdepth_str;
+        nowdepth_str = depth_str;
+
+        std::cout<<"before depth: "<<depth_str<<std::endl;
+        Koopa_IR += if_blockitemlist->generate_Koopa_IR(); // 生成if的block
+        
+
+        if(!be_end_bl[depth_str+"_0"]) Koopa_IR += "\tjump %end_" + std::to_string(now_if) + "\n\n";
+
+        nowdepth_str = f[depth_str];
+        depth_str = nowdepth_str;
+
+        Koopa_IR += "%end_" + std::to_string(now_if) + ":\n";
+
+    } else if(type==8||type==9||type==10||type==11){ // if else block
+        if(be_end_bl[depth_str]) return Koopa_IR;
+
+        if_cnt++;
+        int now_if=if_cnt;
+        Koopa_IR += exp->generate_Koopa_IR();
+        Koopa_IR += "\tbr %" + std::to_string(now-1) + ", %then_" + std::to_string(now_if) + ", %else_" + std::to_string(now_if) + "\n\n";
+        Koopa_IR += "%then_" + std::to_string(now_if) + ":\n";
+
+
+        depth_str += "_1"+std::to_string(now_if);
+        f[depth_str] = nowdepth_str;
+        nowdepth_str = depth_str;
+        Koopa_IR += if_blockitemlist->generate_Koopa_IR(); // 生成if的block
+
+
+        // 此时从if的block中退出，需要用nowdepth+1查看之前if的block中有没有出现return，如果if的block没有结束，跳转到end
+        if(!be_end_bl[depth_str+"_0"]) Koopa_IR += "\tjump %end_" + std::to_string(now_if) + "\n\n";
+
+        nowdepth_str = f[depth_str];
+        depth_str = nowdepth_str;
+
+        Koopa_IR += "%else_" + std::to_string(now_if) + ":\n";
+
+        depth_str += "_2"+std::to_string(now_if);
+        f[depth_str] = nowdepth_str;
+        nowdepth_str = depth_str;
+
+        Koopa_IR += else_blockitemlist->generate_Koopa_IR();
+        
+        if(!be_end_bl[depth_str+"_0"]) Koopa_IR += "\tjump %end_" + std::to_string(now_if) + "\n\n";
+
+        nowdepth_str = f[depth_str];
+        depth_str = nowdepth_str;
+
+        Koopa_IR += "%end_" + std::to_string(now_if) + ":\n";
     }
     return Koopa_IR;
   }
@@ -216,11 +232,6 @@ class StmtAST : public BaseAST {
 class ExpAST : public BaseAST{
 public:
     std::unique_ptr<BaseAST> lorexp;
-    void Dump() const override{
-        std::cout << "ExpAST { ";
-        lorexp->Dump();
-        std::cout<<" }";
-    }
 
     std::string generate_Koopa_IR() const override{
         std::string Koopa_IR = "";
@@ -240,19 +251,6 @@ public:
     std::unique_ptr<BaseAST> landexp;
     std::string lorexpop;
 
-    void Dump() const override{
-        if(lorexp){
-            std::cout << "LorexpAST { ";
-            lorexp->Dump();
-            std::cout<<" "<<lorexpop<<" ";
-            landexp->Dump();
-            std::cout<<" }";
-        } else {
-            std::cout<< "LorexpAST { ";
-            landexp->Dump();
-            std::cout<<" }";
-        }
-    }
 
     std::string generate_Koopa_IR() const override{
         std::string Koopa_IR = "";
@@ -289,20 +287,6 @@ public:
     std::unique_ptr<BaseAST> landexp;
     std::unique_ptr<BaseAST> eqexp;
     std::string landexpop;
-
-    void Dump() const override{
-        if(landexp){
-            std::cout << "LandExpAST { ";
-            landexp->Dump();
-            std::cout<<" "<<landexpop<<" ";
-            eqexp->Dump();
-            std::cout<<" }";
-        } else {
-            std::cout<< "LandExpAST { ";
-            eqexp->Dump();
-            std::cout<<" }";
-        }
-    }
 
     std::string generate_Koopa_IR() const override{
         std::string Koopa_IR = "";
@@ -342,20 +326,6 @@ public:
     std::unique_ptr<BaseAST> eqexp;
     std::unique_ptr<BaseAST> relexp;
     std::string eqexpop;
-
-    void Dump() const override{
-        if(eqexp){
-            std::cout << "EqExpAST { ";
-            eqexp->Dump();
-            std::cout<<" "<<eqexpop<<" ";
-            relexp->Dump();
-            std::cout<<" }";
-        } else {
-            std::cout<< "EqExpAST { ";
-            relexp->Dump();
-            std::cout<<" }";
-        }
-    }
 
     std::string generate_Koopa_IR() const override{
         std::string Koopa_IR = "";
@@ -400,20 +370,6 @@ public:
     std::unique_ptr<BaseAST> relexp;
     std::unique_ptr<BaseAST> addexp;
     std::string relexpop;
-
-    void Dump() const override{
-        if(relexp){
-            std::cout << "RelExpAST { ";
-            relexp->Dump();
-            std::cout<<" "<<relexpop<<" ";
-            addexp->Dump();
-            std::cout<<" }";
-        } else {
-            std::cout<< "RelExpAST { ";
-            addexp->Dump();
-            std::cout<<" }";
-        }
-    }
 
     std::string generate_Koopa_IR() const override{
         std::string Koopa_IR = "";
@@ -470,20 +426,6 @@ public:
     std::unique_ptr<BaseAST> mulexp;
     std::string addexpop;
 
-    void Dump() const override{
-        if(addexp){
-            std::cout << "AddExpAST { ";
-            mulexp->Dump();
-            std::cout<<" "<<addexpop<<" ";
-            addexp->Dump();
-            std::cout<<" }";
-        } else {
-            std::cout<< "AddExpAST { ";
-            mulexp->Dump();
-            std::cout<<" }";
-        }
-    }
-
     std::string generate_Koopa_IR() const override{
         std::string Koopa_IR = "";
         if(addexp){
@@ -528,20 +470,6 @@ public:
     std::unique_ptr<BaseAST> mulexp;
     std::unique_ptr<BaseAST> unaryexp;
     std::string mulexpop;
-
-    void Dump() const override{
-        if(mulexp){
-            std::cout << "MulExpAST { ";
-            mulexp->Dump();
-            std::cout<<" "<<mulexpop<<" ";
-            unaryexp->Dump();
-            std::cout<<" }";
-        } else {
-            std::cout<< "MulExpAST { ";
-            unaryexp->Dump();
-            std::cout<<" }";
-        }
-    }
 
     std::string generate_Koopa_IR() const override{
         std::string Koopa_IR = "";
@@ -594,18 +522,6 @@ public:
     std::string unaryop;
     std::unique_ptr<BaseAST> unaryexp;
 
-    void Dump() const override{
-        if(unaryexp){
-            std::cout << "UnaryExpAST { "<< unaryop <<" ";
-            unaryexp->Dump();
-            std::cout<<" }";
-        } else {
-            std::cout<< "UnaryExpAST { ";
-            primaryexp->Dump();
-            std::cout<<" }";
-        }
-    }
-
     std::string generate_Koopa_IR() const override{
         std::string Koopa_IR = "";
         if(unaryexp){
@@ -648,22 +564,6 @@ public:
     std::unique_ptr<BaseAST> lval;
     int number;
 
-    void Dump() const override{
-        if(exp){
-            std::cout << "PrimaryExpAST { ( ";
-            exp->Dump();
-            std::cout<<" ) }";
-        } else if(lval){
-            std::cout << "PrimaryExpAST { ";
-            lval->Dump();
-            std::cout<<" }";
-        } else {
-            std::cout<< "PrimaryExpAST { ";
-            std::cout<<number;
-            std::cout<<" }";
-        }
-    }
-
     std::string generate_Koopa_IR() const override{
         std::string Koopa_IR = "";
         if(exp){
@@ -697,16 +597,6 @@ public:
     std::unique_ptr<BaseAST> constdecl;
     std::unique_ptr<BaseAST> vardecl;
 
-    void Dump() const override{
-        std::cout << "DeclAST { ";
-        if(constdecl){
-            constdecl->Dump();
-        }else{
-            vardecl->Dump();
-        }
-        std::cout<<" }";
-    }
-
     std::string generate_Koopa_IR() const override{
         std::string Koopa_IR = "";
         if(constdecl){
@@ -731,14 +621,6 @@ public:
     std::unique_ptr<BaseAST> btype;
     std::unique_ptr<BaseAST> vardeflist;
 
-    void Dump() const override{
-        std::cout << "VarDeclAST { ";
-        btype->Dump();
-        std::cout<<", ";
-        vardeflist->Dump();
-        std::cout<<" }";
-    }
-
     std::string generate_Koopa_IR() const override{
         std::string Koopa_IR = "";
         Koopa_IR += btype->generate_Koopa_IR();
@@ -755,20 +637,6 @@ class VarDefListAST : public BaseAST{
 public:
     std::unique_ptr<BaseAST> vardef;
     std::unique_ptr<BaseAST> vardeflist;
-
-    void Dump() const override{
-        if(vardeflist){
-            std::cout << "VarDefListAST { ";
-            vardef->Dump();
-            std::cout<<", ";
-            vardeflist->Dump();
-            std::cout<<" }";
-        } else {
-            std::cout<< "VarDefListAST { ";
-            vardef->Dump();
-            std::cout<<" }";
-        }
-    }
 
     std::string generate_Koopa_IR() const override{
         std::string Koopa_IR = "";
@@ -796,24 +664,11 @@ public:
     std::string ident;
     std::unique_ptr<BaseAST> initval;
 
-    void Dump() const override{
-        if(initval){
-            std::cout << "VarDefAST { ";
-            std::cout<<ident;
-            std::cout<<", ";
-            initval->Dump();
-            std::cout<<" }";
-        } else {
-            std::cout<< "VarDefAST { ";
-            std::cout<<ident;
-            std::cout<<" }";
-        }
-    }
 
     std::string generate_Koopa_IR() const override{
         std::string Koopa_IR = "";
         if(initval){
-            std::string Identifier = "COMPILER__" + ident + "_"+ std::to_string(nowdepth);
+            std::string Identifier = "COMPILER__" + ident + "_"+ depth_str;
             Koopa_IR += "  @" + Identifier + " = alloc i32\n";
             var_type[Identifier] = 1;
             const_val[Identifier] = initval->Calc();
@@ -821,7 +676,7 @@ public:
             Koopa_IR += "  store %" + std::to_string(now-1) + ", @" + Identifier + "\n";
         }
         else{
-            std::string Identifier = "COMPILER__" + ident + "_"+ std::to_string(nowdepth) ;
+            std::string Identifier = "COMPILER__" + ident + "_"+ depth_str;
             Koopa_IR += "  @" + Identifier + " = alloc i32\n";
             var_type[Identifier] = 1;
             const_val[Identifier] = 0;
@@ -837,12 +692,6 @@ public:
 class InitValAST : public BaseAST{
 public:
     std::unique_ptr<BaseAST> exp;
-
-    void Dump() const override{
-        std::cout << "InitValAST { ";
-        exp->Dump();
-        std::cout<<" }";
-    }
 
     std::string generate_Koopa_IR() const override{
         std::string Koopa_IR = "";
@@ -860,14 +709,6 @@ public:
     std::unique_ptr<BaseAST> btype;
     std::unique_ptr<BaseAST> constdeflist;
 
-    void Dump() const override{
-        std::cout << "ConstDeclAST { ";
-        btype->Dump();
-        std::cout<<", ";
-        constdeflist->Dump();
-        std::cout<<" }";
-    }
-
     std::string generate_Koopa_IR() const override{
         std::string Koopa_IR = "";
         Koopa_IR += btype->generate_Koopa_IR();
@@ -884,12 +725,6 @@ class BTypeAST : public BaseAST{
 public:
     std::string type;
 
-    void Dump() const override{
-        std::cout<<"BTypeAST { ";
-        std::cout<<type;
-        std::cout<<" }";
-    }
-
     std::string generate_Koopa_IR() const override{
         return "";
     }
@@ -903,20 +738,6 @@ class ConstDefListAST : public BaseAST{
 public:
     std::unique_ptr<BaseAST> constdef;
     std::unique_ptr<BaseAST> constdeflist;
-
-    void Dump() const override{
-        if(constdeflist){
-            std::cout << "ConstDefListAST { ";
-            constdef->Dump();
-            std::cout<<", ";
-            constdeflist->Dump();
-            std::cout<<" }";
-        } else {
-            std::cout<< "ConstDefListAST { ";
-            constdef->Dump();
-            std::cout<<" }";
-        }
-    }
 
     std::string generate_Koopa_IR() const override{
         std::string Koopa_IR = "";
@@ -939,21 +760,13 @@ public:
     std::string ident;
     std::unique_ptr<BaseAST> constinitval;
 
-    void Dump() const override{
-        std::cout << "ConstDefAST { ";
-        std::cout<<ident;
-        std::cout<<", ";
-        constinitval->Dump();
-        std::cout<<" }";
-    }
-
     std::string generate_Koopa_IR() const override{
         std::string Koopa_IR = "";
         //Koopa_IR += constinitval->generate_Koopa_IR();
         int val = this->Calc();
         auto constinitval_addr = reinterpret_cast<uintptr_t>(constinitval.get());
         IR_reg[constinitval_addr] = std::to_string(val);
-        std::string Identifier = "COMPILER__" + ident + "_"+ std::to_string(nowdepth);
+        std::string Identifier = "COMPILER__" + ident + "_"+ depth_str;
         const_reg[Identifier] = IR_reg[constinitval_addr]; // 常量放入对应寄存器
         //IR_reg[constinitval_addr] = "%"+std::to_string(now);
 
@@ -968,7 +781,7 @@ public:
     }
 
     int Calc() const override{
-        std::string Identifier = "COMPILER__" + ident + "_"+ std::to_string(nowdepth);
+        std::string Identifier = "COMPILER__" + ident + "_"+ depth_str;
         const_val[Identifier] =  constinitval->Calc();
         var_type[Identifier] = 0; //常量
         return const_val[Identifier];
@@ -978,12 +791,6 @@ public:
 class ConstInitValAST : public BaseAST{
 public:
     std::unique_ptr<BaseAST> constexp;
-
-    void Dump() const override{
-        std::cout << "ConstInitValAST { ";
-        constexp->Dump();
-        std::cout<<" }";
-    }
 
     std::string generate_Koopa_IR() const override{
         std::string Koopa_IR = "";
@@ -1001,25 +808,10 @@ public:
     std::unique_ptr<BaseAST> blockitemlist;
     int type;
 
-    void Dump() const override{
-        if(type==0){
-            std::cout << "BlockAST { ";
-            blockitemlist->Dump();
-            std::cout<<" }";
-        }else if(type==1){
-            std::cout << "BlockAST { ";
-            std::cout<<" }";
-        }
-    }
-
     std::string generate_Koopa_IR() const override{
         std::string Koopa_IR = "";
         if(type==0){
-            depth++;             // 进入新的block depth+1
-            f[depth]=nowdepth;   // 新的block的父节点是之前的block
-            nowdepth=depth;      // nowdepth更新为当前深度
             Koopa_IR += blockitemlist->generate_Koopa_IR();  // 生成block的IR
-            nowdepth=f[nowdepth];   // 离开block前，恢复当前深度depth为父节点的深度
         }else if(type==1){
             Koopa_IR += "";
         }
@@ -1037,20 +829,6 @@ class BlockItemListAST : public BaseAST{
 public:
     std::unique_ptr<BaseAST> blockitem;
     std::unique_ptr<BaseAST> blockitemlist;
-
-    void Dump() const override{
-        if(blockitemlist){
-            std::cout << "BlockItemListAST { ";
-            blockitem->Dump();
-            std::cout<<", ";
-            blockitemlist->Dump();
-            std::cout<<" }";
-        } else {
-            std::cout<< "BlockItemListAST { ";
-            blockitem->Dump();
-            std::cout<<" }";
-        }
-    }
 
     std::string generate_Koopa_IR() const override{
         std::string Koopa_IR = "";
@@ -1073,27 +851,21 @@ public:
     std::unique_ptr<BaseAST> decl;
     std::unique_ptr<BaseAST> stmt;
 
-    void Dump() const override{
-        if(decl){
-            std::cout << "BlockItemAST { ";
-            decl->Dump();
-            std::cout<<" }";
-        } else if(stmt){
-            std::cout<< "BlockItemAST { ";
-            stmt->Dump();
-            std::cout<<" }";
-        }else{
-            std::cout<<"BlockItemAST { }";
-        }
-    }
-
     std::string generate_Koopa_IR() const override{
         std::string Koopa_IR = "";
+        if(be_end_bl[depth_str]){
+            return "";
+        }
+        depth_str += "_0";            // 进入block，深度加1q
+        f[depth_str]=nowdepth_str;   // 新的block的父节点是之前的block
+        nowdepth_str=depth_str;      // nowdepth更新为当前深度
         if(decl){
             Koopa_IR += decl->generate_Koopa_IR();
         }else if(stmt){
             Koopa_IR += stmt->generate_Koopa_IR();
         }
+        nowdepth_str=f[nowdepth_str];   // 离开block前，恢复当前深度depth为父节点的深度
+        depth_str = nowdepth_str;       // 恢复当前深度
         return Koopa_IR;
     }
 
@@ -1106,12 +878,6 @@ public:
 class ConstExpAST : public BaseAST{
 public:
     std::unique_ptr<BaseAST> exp;
-
-    void Dump() const override{
-        std::cout << "ConstExpAST { ";
-        exp->Dump();
-        std::cout<<" }";
-    }
 
     std::string generate_Koopa_IR() const override{
         std::string Koopa_IR = "";

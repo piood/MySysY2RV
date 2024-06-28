@@ -38,7 +38,7 @@ using namespace std;
 
 // lexer 返回的所有 token 种类的声明
 // 注意 IDENT 和 INT_CONST 会返回 token 的值, 分别对应 str_val 和 int_val
-%token INT RETURN CONST
+%token INT RETURN CONST IF ELSE
 %token <str_val> IDENT LOROP LANDOP EQOP RELOP
 %token <int_val> INT_CONST
 
@@ -114,15 +114,64 @@ Stmt
     auto ast = new StmtAST();
     ast->exp = unique_ptr<BaseAST>($1);
     ast->type = 2;
+    $$ = ast;
   }
   | Block {
     auto ast = new StmtAST();
     ast->block = unique_ptr<BaseAST>($1);
     ast->type = 3;
+    $$ = ast;
   }
   | RETURN ';' {
     auto ast = new StmtAST();
     ast->type = 5;
+    $$ = ast;
+  }
+  | IF '(' Exp ')' BlockItem {
+    auto ast = new StmtAST();
+    ast->exp = unique_ptr<BaseAST>($3);
+    ast->if_blockitemlist = unique_ptr<BaseAST>($5);
+    ast->type = 6;
+    $$ = ast;
+  }
+  | IF '(' Exp ')' '{' BlockItemList '}' {
+    auto ast = new StmtAST();
+    ast->exp = unique_ptr<BaseAST>($3);
+    ast->if_blockitemlist = unique_ptr<BaseAST>($6);
+    ast->type = 7;
+    $$ = ast;
+  }
+  | IF '(' Exp ')' BlockItem ELSE BlockItem {
+    auto ast = new StmtAST();
+    ast->exp = unique_ptr<BaseAST>($3);
+    ast->if_blockitemlist = unique_ptr<BaseAST>($5);
+    ast->else_blockitemlist = unique_ptr<BaseAST>($7);
+    ast->type = 8;
+    $$ = ast;
+  }
+  | IF '(' Exp ')' '{' BlockItemList '}' ELSE BlockItem {
+    auto ast = new StmtAST();
+    ast->exp = unique_ptr<BaseAST>($3);
+    ast->if_blockitemlist = unique_ptr<BaseAST>($6);
+    ast->else_blockitemlist = unique_ptr<BaseAST>($9);
+    ast->type = 9;
+    $$ = ast;
+  }
+  | IF '(' Exp ')' BlockItem ELSE '{' BlockItemList '}' {
+    auto ast = new StmtAST();
+    ast->exp = unique_ptr<BaseAST>($3);
+    ast->if_blockitemlist = unique_ptr<BaseAST>($5);
+    ast->else_blockitemlist = unique_ptr<BaseAST>($8);
+    ast->type = 10;
+    $$ = ast;
+  }
+  | IF '(' Exp ')' '{' BlockItemList '}' ELSE '{' BlockItemList '}' {
+    auto ast = new StmtAST();
+    ast->exp = unique_ptr<BaseAST>($3);
+    ast->if_blockitemlist = unique_ptr<BaseAST>($6);
+    ast->else_blockitemlist = unique_ptr<BaseAST>($10);
+    ast->type = 11;
+    $$ = ast;
   }
   ;
 

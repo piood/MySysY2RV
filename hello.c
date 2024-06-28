@@ -1,39 +1,12 @@
 int main() {
-  int a = 1, sum = 0;
-  {
-    a = a + 2;
-    int b = a + 3;
-    b = b + 4;
-    sum = sum + a + b;
-    {
-      b = b + 5;
-      int c = b + 6;
-      a = a + c;
-      sum = sum + a + b + c;
-      {
-        b = b + a;
-        int a = c + 7;
-        a = a + 8;
-        sum = sum + a + b + c;
-        {
-          b = b + a;
-          int b = c + 9;
-          a = a + 10;
-          const int a = 11;
-          b = b + 12;
-          sum = sum + a + b + c;
-          {
-            c = c + b;
-            int c = b + 13;
-            c = c + a;
-            sum = sum + a + b + c;
-          }
-          sum = sum - c;
-        }
-        sum = sum - b;
-      }
-      sum = sum - a;
-    }
-  }
-  return sum % 77;
+  int a = 1 || 2 && 3;
+  int b = 0 && 1 || 0;
+  int c = (1 && 0 || 1) * 4;
+  int d = 5;
+  const int e = 6 || 7 && 8;
+  if (a == 1 || a == 2);
+  if (b == 0 || b == 1) d = d + 1; else;
+  if (a && b || c && d) d = d + e;
+  return d || !c;
+  return d || e;
 }

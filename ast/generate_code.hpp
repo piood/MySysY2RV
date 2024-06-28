@@ -16,6 +16,8 @@ void generate_code(const koopa_raw_return_t &ret);
 void generate_code(const koopa_raw_integer_t &integer, const koopa_raw_value_t &value);
 void generate_code(const koopa_raw_store_t &store, const koopa_raw_value_t &value);
 void generate_code(const koopa_raw_load_t &load, const koopa_raw_value_t &value);
+void generate_code(const koopa_raw_jump_t &jump);
+void generate_code(const koopa_raw_branch_t &branch);
 
 std::string binary_get_reg_release_unused_reg(std::string lreg, std::string rreg);
 std::string get_reg();
@@ -148,6 +150,12 @@ void generate_code(const koopa_raw_basic_block_t &bb) {
   // 执行一些其他的必要操作
   // ...
   // 访问所有指令
+  if(bb->name!=nullptr){
+    std::string bb_name = bb->name;
+    if(bb_name!="%entry"){
+        risc_v_code += bb_name.substr(1) + ":\n";
+    }
+  }
   generate_code(bb->insts);
 }
 
@@ -168,7 +176,7 @@ void generate_code(const koopa_raw_return_t &ret) {
   std::string ret_reg = instruction2reg[ret_value];
   risc_v_code += "  mv a0, " + ret_reg + "\n";
   risc_v_code += "  addi sp, sp, 256\n";
-  risc_v_code += "  ret\n";
+  risc_v_code += "  ret\n\n";
 }
 
 void generate_code(const koopa_raw_integer_t &integer, const koopa_raw_value_t &value) {
@@ -217,6 +225,34 @@ void generate_code(const koopa_raw_store_t &store, const koopa_raw_value_t &valu
     instruction2reg[value] = instruction2reg[sto_dest];
 }
 
+void generate_code(const koopa_raw_jump_t &jump) {
+  // 访问 jump 指令
+  // ...
+    auto target = jump.target;
+    std::string target_name = target->name;
+    risc_v_code += "  j " + target_name.substr(1) + "\n\n";
+    //generate_code(target);
+}
+
+void generate_code(const koopa_raw_branch_t &branch) {
+  // 访问 branch 指令
+  // ...
+    koopa_raw_value_t branch_cond = branch.cond;
+    koopa_raw_basic_block_t true_block = branch.true_bb;
+    koopa_raw_basic_block_t false_block = branch.false_bb;
+
+    generate_code(branch_cond);
+
+    std::string cond_reg = instruction2reg[branch_cond];
+    std::string true_name = true_block->name;
+    std::string false_name = false_block->name;
+    true_name = true_name.substr(1);
+    false_name = false_name.substr(1);
+
+    risc_v_code += "  bnez " + cond_reg + ", " + true_name + "\n";
+    risc_v_code += "  j " + false_name + "\n\n";
+}
+
 void generate_code(const koopa_raw_value_t &value){
     //访问二元运算
     //...
@@ -240,6 +276,13 @@ void generate_code(const koopa_raw_value_t &value){
         generate_code(kind.data.load, value);
     }else if(kind.tag==KOOPA_RVT_STORE){
         generate_code(kind.data.store, value);
+    }else if(kind.tag==KOOPA_RVT_JUMP){
+        // 访问 jump 指令
+        // ...
+        generate_code(kind.data.jump);
+    }
+    else if(kind.tag==KOOPA_RVT_BRANCH){
+        generate_code(kind.data.branch);
     }
     else if(kind.tag==KOOPA_RVT_BINARY){
         koopa_raw_binary_t binary = kind.data.binary;
