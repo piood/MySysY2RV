@@ -25,6 +25,10 @@ static std::unordered_map<std::string, int> var_type; // 变量表 变量->类�
 static std::unordered_map<std::string, std::string> f; // 嵌套 当前深度->上一深度
 
 static int if_cnt = 0; // if调整指令计数，方便生成if label
+
+static int while_cnt = 0, while_now = 0; // while调整指令计数，方便生成while label
+static std::unordered_map<int, int> whf; // 记录当前while是否已经结束，是否需要生成返回指令
+
 static std::unordered_map<std::string, bool> be_end_bl; // 记录当前block是否已经结束，是否需要生成返回指令
 
 static std::string depth_str = ""; // 当前深度的字符串形式
@@ -126,11 +130,13 @@ class StmtAST : public BaseAST {
   std::unique_ptr<BaseAST> else_blockitem;
   std::unique_ptr<BaseAST> if_blockitemlist;
   std::unique_ptr<BaseAST> else_blockitemlist;
+  std::unique_ptr<BaseAST> while_blockitemlist;
 
   int type;
 
   std::string generate_Koopa_IR() const override{
     std::string Koopa_IR = "";
+    if(be_end_bl[depth_str]) return Koopa_IR;
     if(type==1){
         Koopa_IR += exp->generate_Koopa_IR();
         auto exp_addr = reinterpret_cast<uintptr_t>(exp.get());
@@ -150,6 +156,7 @@ class StmtAST : public BaseAST {
         auto exp_addr = reinterpret_cast<uintptr_t>(exp.get());
         IR_reg[exp_addr] = "%"+std::to_string(now-1);
         Koopa_IR += "  ret " + IR_reg[exp_addr] + "\n\n";
+        std::cout<<"after depth_str: "<<depth_str<<std::endl;
         be_end_bl[depth_str] = true;
     } else if(type==2){
         Koopa_IR += exp->generate_Koopa_IR();
@@ -160,7 +167,7 @@ class StmtAST : public BaseAST {
     } else if(type==5){
         Koopa_IR += "";
     } else if(type==6||type==7){ // if block
-        if(be_end_bl[depth_str]) return Koopa_IR; // 如果当前block已经结束，不生成if
+        if(be_end_bl[depth_str]) return Koopa_IR; // 如果当前block已经结束，不再生成IR
         if_cnt++;
         int now_if = if_cnt;
 
@@ -185,8 +192,7 @@ class StmtAST : public BaseAST {
         Koopa_IR += "%end_" + std::to_string(now_if) + ":\n";
 
     } else if(type==8||type==9||type==10||type==11){ // if else block
-        if(be_end_bl[depth_str]) return Koopa_IR;
-
+        if(be_end_bl[depth_str]) return Koopa_IR; // 如果当前block已经结束，不再生成IR
         if_cnt++;
         int now_if=if_cnt;
         Koopa_IR += exp->generate_Koopa_IR();
@@ -220,6 +226,44 @@ class StmtAST : public BaseAST {
         depth_str = nowdepth_str;
 
         Koopa_IR += "%end_" + std::to_string(now_if) + ":\n";
+    } else if(type==12||type==13){
+        while_cnt++;
+        whf[while_cnt] = while_now;
+        while_now = while_cnt;
+
+        if(!be_end_bl[depth_str]) Koopa_IR += "  jump %while_" + std::to_string(while_now) + "\n\n"; // 如果当前block已经结束，不再生成IR
+
+        Koopa_IR += "%while_" + std::to_string(while_now) + ":\n";
+
+        Koopa_IR += exp->generate_Koopa_IR();
+ 
+        if(!be_end_bl[depth_str]) Koopa_IR += "\tbr %" + std::to_string(now-1) + ", %while_then_" + std::to_string(while_now) + ", %end_while_" + std::to_string(while_now) + "\n\n";
+
+        Koopa_IR += "%while_then_" + std::to_string(while_now) + ":\n";
+
+        depth_str += "_3"+std::to_string(while_now); // 加3代表进入while的block
+
+        f[depth_str] = nowdepth_str;
+        nowdepth_str = depth_str;
+
+        std::cout<<"before depth: "<<depth_str<<std::endl;
+        Koopa_IR += while_blockitemlist->generate_Koopa_IR(); // 生成while的block
+
+        // 此时从if的block中退出，需要用nowdepth+1查看之前if的block中有没有出现return，如果if的block没有结束，跳转到end
+        if(!be_end_bl[depth_str+"_0"]) Koopa_IR += "\tjump %while_" + std::to_string(while_now) + "\n\n";
+
+        Koopa_IR += "%end_while_" + std::to_string(while_now) + ":\n";
+
+        while_now = whf[while_now];
+
+        nowdepth_str = f[depth_str];
+        depth_str = nowdepth_str;
+    } else if(type==14){
+        Koopa_IR += "\tjump %end_while_" + std::to_string(while_now)+ "\n";
+        be_end_bl[nowdepth_str]=true; 
+    } else if(type==15){
+        Koopa_IR +=  "\tjump %while_" + std::to_string(while_now)+ "\n";
+        be_end_bl[nowdepth_str]=true;
     }
     return Koopa_IR;
   }
