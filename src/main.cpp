@@ -5,9 +5,11 @@
 #include <cstring>
 #include <string>
 #include <fstream>
+#include <sstream>
 #include "../ast/ast.hpp"
 #include "../ast/transform_koopa_raw.hpp"
 #include "../ast/generate_code.hpp"
+#include "sysy.tab.hpp"
 
 
 using namespace std;
@@ -34,13 +36,30 @@ int main(int argc, const char *argv[]) {
 
   // 调用 parser 函数, parser 函数会进一步调用 lexer 解析输入文件的
   unique_ptr<BaseAST> ast;
+  // yydebug = 1; // 启用调试输出
   auto ret = yyparse(ast);
   assert(!ret);
 
   // 输出解析得到的 AST, 其实就是个字符串
-  string IR_str = ast->generate_Koopa_IR();
+  std::ostringstream oss;
+    
+  // 备份标准输出流缓冲区
+  std::streambuf* originalCoutStreamBuf = std::cout.rdbuf();
+    
+  // 将标准输出流缓冲区重定向到 oss
+  std::cout.rdbuf(oss.rdbuf());
+    
+  // 执行输出操作
+  // 输出解析得到的 AST, 其实就是个字符串
+  ast->generate_Koopa_IR();
+    
+  // 恢复标准输出流缓冲区
+  std::cout.rdbuf(originalCoutStreamBuf);
+    
+  // 从 oss 获取字符串
+  std::string IR_str = oss.str();
   const char* IR_cstr = IR_str.c_str();
-  cout<<IR_cstr;
+  cout<<IR_str<<'\n';
   if (strcmp(mode, "-koopa")==0){
     FILE* output_file = fopen(output, "w");
     fwrite(IR_cstr, sizeof(char), IR_str.size(), output_file);

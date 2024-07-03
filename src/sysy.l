@@ -12,6 +12,8 @@
 // 所以需要 include Bison 生成的头文件
 #include "sysy.tab.hpp"
 
+extern char *yytext;
+
 using namespace std;
 
 %}
@@ -22,7 +24,7 @@ LineComment   "//".*
 MultiLineComment \/\*([^*]|(\*+[^*/]))*\*+\/
 
 /* 标识符 */
-Identifier    [a-zA-Z_][a-zA-Z0-9_]*
+Identifier_1    [a-zA-Z_][a-zA-Z0-9_]*
 
 /* 运算符 */
 RelOperator   <|>|<=|>=
@@ -50,8 +52,9 @@ Hexadecimal   0[xX][0-9a-fA-F]+
 "while"         { return WHILE; }
 "break"         { return BREAK; }
 "continue"      { return CONTINUE; }
+"void"          { return VOID; }
 
-{Identifier}    { yylval.str_val = new string(yytext); return IDENT; }
+{Identifier_1}    { yylval.str_val = new string(yytext); return IDENT; }
 
 
 {RelOperator}      { yylval.str_val = new string(yytext); return RELOP; }

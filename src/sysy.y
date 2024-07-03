@@ -16,9 +16,14 @@
 int yylex();
 void yyerror(std::unique_ptr<BaseAST> &ast, const char *s);
 
+extern char *yytext;  // 声明 yytext 变量
+#define YYDEBUG 1
+
 using namespace std;
 
 %}
+
+%debug // 添加调试支持
 
 // 定义 parser 函数和错误处理函数的附加参数
 // 我们需要返回一个字符串作为 AST, 所以我们把附加参数定义成字符串的智能指针
@@ -38,12 +43,12 @@ using namespace std;
 
 // lexer 返回的所有 token 种类的声明
 // 注意 IDENT 和 INT_CONST 会返回 token 的值, 分别对应 str_val 和 int_val
-%token INT RETURN CONST IF ELSE WHILE BREAK CONTINUE
+%token INT RETURN CONST IF ELSE WHILE BREAK CONTINUE VOID
 %token <str_val> IDENT LOROP LANDOP EQOP RELOP
 %token <int_val> INT_CONST
 
 // 非终结符的类型定义
-%type <ast_val> FuncDef FuncType Block Stmt Exp PrimaryExp UnaryExp MulExp AddExp LOrExp LAndExp EqExp RelExp Decl ConstDecl BType ConstDef ConstDefList ConstInitVal BlockItemList BlockItem LVal ConstExp VarDecl VarDefList VarDef InitVal
+%type <ast_val> CompUnit FuncDef Block Stmt Exp PrimaryExp UnaryExp MulExp AddExp LOrExp LAndExp EqExp RelExp Decl ConstDecl BType ConstDef ConstDefList ConstInitVal BlockItemList BlockItem LVal ConstExp VarDecl VarDefList VarDef InitVal FuncFParams FuncFParam FuncRParams
 %type <int_val> Number
 %type <str_val> UnaryOp MulExpOp AddExpOp
 
@@ -54,11 +59,53 @@ using namespace std;
 // 而 parser 一旦解析完 CompUnit, 就说明所有的 token 都被解析了, 即解析结束了
 // 此时我们应该把 FuncDef 返回的结果收集起来, 作为 AST 传给调用 parser 的函数
 // $1 指代规则里第一个符号的返回值, 也就是 FuncDef 的返回值
-CompUnit
-  : FuncDef {
-    auto comp_unit = make_unique<CompUnitAST>();
-    comp_unit->func_def = unique_ptr<BaseAST>($1);
-    ast = move(comp_unit);
+ProgramUnit
+  : CompUnit {
+    auto program_unit = make_unique<ProgramUnitAST>();
+    program_unit->compunit = unique_ptr<BaseAST>($1);
+    ast = move(program_unit);
+  }
+  ;
+
+CompUnit:
+  Decl {
+    auto ast = new CompUnitAST();
+    ast->decl = unique_ptr<BaseAST>($1);
+    ast->type = 2;
+    $$ = ast;
+  }
+  | FuncDef {
+    auto ast = new CompUnitAST();
+    ast->funcdef = unique_ptr<BaseAST>($1);
+    ast->type = 1;
+    $$ = ast;
+  }
+  | CompUnit Decl {
+    auto ast = new CompUnitAST();
+    ast->compunit = unique_ptr<BaseAST>($1);
+    ast->decl = unique_ptr<BaseAST>($2);
+    ast->type = 2;
+    $$ = ast;
+  }
+  | CompUnit FuncDef {
+    auto ast = new CompUnitAST();
+    ast->compunit = unique_ptr<BaseAST>($1);
+    ast->funcdef = unique_ptr<BaseAST>($2);
+    ast->type = 1;
+    $$ = ast;
+  }
+  ;
+
+Decl
+  : ConstDecl {
+    auto ast = new DeclAST();
+    ast->constdecl = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  | VarDecl {
+    auto ast = new DeclAST();
+    ast->vardecl = unique_ptr<BaseAST>($1);
+    $$ = ast;
   }
   ;
 
@@ -73,20 +120,54 @@ CompUnit
 // 虽然此处你看不出用 unique_ptr 和手动 delete 的区别, 但当我们定义了 AST 之后
 // 这种写法会省下很多内存管理的负担
 FuncDef
-  : FuncType IDENT '(' ')' Block {
+  : BType IDENT '(' ')' Block {
     auto ast = new FuncDefAST();
     ast->func_type = unique_ptr<BaseAST>($1);
     ast->ident = *unique_ptr<string>($2);
     ast->block = unique_ptr<BaseAST>($5);
     $$ = ast;
+  } 
+  | BType IDENT '(' FuncFParams ')' Block {
+    auto ast = new FuncDefAST();
+    ast->func_type = unique_ptr<BaseAST>($1);
+    ast->ident = *unique_ptr<string>($2);
+    ast->funcfparams = unique_ptr<BaseAST>($4);
+    ast->block = unique_ptr<BaseAST>($6);
+    $$ = ast;
   }
   ;
 
-// 同上, 不再解释
-FuncType
+FuncFParams
+  : FuncFParam {
+    auto ast = new FuncFParamsAST();
+    ast->funcfparam = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  | FuncFParams ',' FuncFParam {
+    auto ast = new FuncFParamsAST();
+    ast->funcfparams = unique_ptr<BaseAST>($1);
+    ast->funcfparam = unique_ptr<BaseAST>($3);
+    $$ = ast;
+  }
+  ;
+
+FuncFParam
+  : INT IDENT {
+    auto ast = new FuncFParamAST();
+    ast->ident = *unique_ptr<string>($2);
+    $$ = ast;
+  }
+  ;
+
+BType
   : INT {
-    auto ast = new FuncTypeAST();
-    ast->INT = "int";
+    auto ast = new BTypeAST();
+    ast->type = "int";
+    $$ = ast;
+  }
+  | VOID {
+    auto ast = new BTypeAST();
+    ast->type = "void";
     $$ = ast;
   }
   ;
@@ -242,11 +323,40 @@ UnaryExp
     auto ast = new UnaryExpAST();
     ast->unaryop = *unique_ptr<string>($1);
     ast->unaryexp = unique_ptr<BaseAST>($2);
+    ast->type = 1;
     $$ = ast;
   }
   | PrimaryExp {
     auto ast = new UnaryExpAST();
     ast->primaryexp = unique_ptr<BaseAST>($1);
+    ast->type = 2;
+    $$ = ast;
+  }
+  | IDENT '(' ')' {
+    auto ast = new UnaryExpAST();
+    ast->ident = *unique_ptr<string>($1);
+    ast->type = 3;
+    $$ = ast;
+  }
+  | IDENT '(' FuncRParams ')' {
+    auto ast = new UnaryExpAST();
+    ast->ident = *unique_ptr<string>($1);
+    ast->funcrparams = unique_ptr<BaseAST>($3);
+    ast->type = 4;
+    $$ = ast;
+  }
+  ;
+
+FuncRParams
+  : Exp {
+    auto ast = new FuncRParamsAST();
+    ast->exp = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  | FuncRParams ',' Exp {
+    auto ast = new FuncRParamsAST();
+    ast->funcrparams = unique_ptr<BaseAST>($1);
+    ast->exp = unique_ptr<BaseAST>($3);
     $$ = ast;
   }
   ;
@@ -329,19 +439,6 @@ RelExp
   }
   ;
 
-Decl
-  : ConstDecl {
-    auto ast = new DeclAST();
-    ast->constdecl = unique_ptr<BaseAST>($1);
-    $$ = ast;
-  }
-  | VarDecl {
-    auto ast = new DeclAST();
-    ast->vardecl = unique_ptr<BaseAST>($1);
-    $$ = ast;
-  }
-  ;
-
 VarDecl
   : BType VarDefList ';' {
     auto ast = new VarDeclAST();
@@ -406,14 +503,6 @@ ConstDefList
     auto ast = new ConstDefListAST();
     ast->constdeflist = unique_ptr<BaseAST>($1);
     ast->constdef = unique_ptr<BaseAST>($3);
-    $$ = ast;
-  }
-  ;
-
-BType
-  : INT {
-    auto ast = new BTypeAST();
-    ast->type = "int";
     $$ = ast;
   }
   ;
@@ -537,4 +626,5 @@ AddExpOp
 // parser 如果发生错误 (例如输入的程序出现了语法错误), 就会调用这个函数
 void yyerror(unique_ptr<BaseAST> &ast, const char *s) {
   cerr << "error: " << s << endl;
+  cerr << "Current token: " << yytext << endl;
 }

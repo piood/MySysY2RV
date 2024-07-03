@@ -18,6 +18,7 @@ void generate_code(const koopa_raw_store_t &store, const koopa_raw_value_t &valu
 void generate_code(const koopa_raw_load_t &load, const koopa_raw_value_t &value);
 void generate_code(const koopa_raw_jump_t &jump);
 void generate_code(const koopa_raw_branch_t &branch);
+void generate_code(const koopa_raw_call_t &call);
 
 std::string binary_get_reg_release_unused_reg(std::string lreg, std::string rreg);
 std::string get_reg();
@@ -97,19 +98,7 @@ std::string Koopa_IR2RISC_V(const char *str){
 
     koopa_delete_program(program);
 
-    risc_v_code = "  .text\n";
-
-    risc_v_code += "  .globl";
-
-    //得到所有定义的函数名
-    for(int i = 0; i < raw.funcs.len; i++){
-        assert(raw.funcs.kind == KOOPA_RSIK_FUNCTION);
-        koopa_raw_function_t func =(koopa_raw_function_t) raw.funcs.buffer[i];
-        const char* function_name = func->name;
-        std::string function_name_str(function_name);
-        risc_v_code += " "+function_name_str.std::string::substr(1);
-    }
-    risc_v_code += "\n";
+    risc_v_code = "";
 
     generate_code(raw);
 
@@ -160,23 +149,64 @@ void generate_code(const koopa_raw_basic_block_t &bb) {
 }
 
 void generate_code(const koopa_raw_function_t &func) {
-  const char* function_name = func->name;
-  std::string function_name_str(function_name);
-  risc_v_code += function_name_str.substr(1) + ":\n";
-  risc_v_code += "  addi sp, sp, -256\n";
-  generate_code(func->bbs);
+    risc_v_code += "  .text\n";
+    risc_v_code += "  .globl";
+    const char* function_name = func->name;
+    std::string function_name_str(function_name);
+    risc_v_code += " "+function_name_str.substr(1)+"\n";
+    risc_v_code += function_name_str.substr(1) + ":\n";
+
+    st = 0;
+    int stack_depth = 256; // 得到当前函数运行的栈的长度
+    
+    //if(stack_depth>0) risc_v_code += "  addi sp, sp, -" + std::to_string(stack_depth) + "\n";
+    generate_code(func->bbs);
+    //if(stack_depth>0) risc_v_code += "  addi sp, sp, " + std::to_string(stack_depth) + "\n";
+    //risc_v_code += "  ret\n\n";
 }
 
 void generate_code(const koopa_raw_return_t &ret) {
   // 访问返回值
-  koopa_raw_value_t ret_value = ret.value;
+  /*koopa_raw_value_t ret_value = ret.value;
 
   generate_code(ret_value);
 
   std::string ret_reg = instruction2reg[ret_value];
-  risc_v_code += "  mv a0, " + ret_reg + "\n";
-  risc_v_code += "  addi sp, sp, 256\n";
-  risc_v_code += "  ret\n\n";
+  if(ret_reg!="") risc_v_code += "  mv a0, " + ret_reg + "\n";*/
+  koopa_raw_value_t ret_value = ret.value;
+  if(!ret_value){
+    risc_v_code += "  li a0, 0\n";
+
+    risc_v_code += "  add t4, t4, sp\n";
+    risc_v_code += "  lw ra, (t4)\n";
+
+    risc_v_code += "  add sp, sp, t4\n";
+    risc_v_code += "  ret\n\n";
+    return;
+  }else if(ret_value->kind.tag==KOOPA_RVT_INTEGER){
+    int32_t int_val = ret_value->kind.data.integer.value;
+    risc_v_code += "  li a0, " + std::to_string(int_val) + "\n";
+
+    risc_v_code += "  add t4, t4, sp\n";
+    risc_v_code += "  lw ra, (t4)\n";
+
+    risc_v_code += "  add sp, sp, t4\n";
+    risc_v_code += "  ret\n\n";
+  }
+  else{
+    if(ret_value->kind.tag==KOOPA_RVT_LOAD){
+        generate_code(ret_value);
+    }
+    risc_v_code += "  li t4, " + instruction2reg[ret_value] + "\n";
+    risc_v_code += "  add t4, t4, sp\n";
+    risc_v_code += "  lw a0, (t4)\n";
+
+    risc_v_code += "  add t4, t4, 4\n";
+    risc_v_code += "  lw ra, (t4)\n";
+
+    risc_v_code += "  add sp, sp, t4\n";
+    risc_v_code += "  ret\n\n";
+  }
 }
 
 void generate_code(const koopa_raw_integer_t &integer, const koopa_raw_value_t &value) {
@@ -212,17 +242,46 @@ void generate_code(const koopa_raw_store_t &store, const koopa_raw_value_t &valu
     if(sto_value->kind.tag == KOOPA_RVT_INTEGER){
         risc_v_code += "   li t0, " + std::to_string(sto_value->kind.data.integer.value) + "\n";
     }
-    if(instruction2reg.find(sto_dest)==instruction2reg.end()){
-        instruction2reg[sto_dest] = std::to_string(st);
-        st += 4;
+    else if(sto_value->kind.tag == KOOPA_RVT_FUNC_ARG_REF){
+        koopa_raw_func_arg_ref_t arg = sto_value->kind.data.func_arg_ref;
+        if(arg.index<8){
+            risc_v_code += "  mv t0, a" + std::to_string(arg.index) + "\n";
+        }else{
+            risc_v_code += "  add t4, t4, sp\n";
+            risc_v_code += "  lw t0, (t4)\n";
+        }
     }else{
-        std::cout<<"\n sto_dest: "<<instruction2reg[sto_dest]<<std::endl;
+        if(sto_value->kind.tag == KOOPA_RVT_LOAD){ 
+            generate_code(sto_value);
+        }
+        risc_v_code += "  li t4, " + instruction2reg[sto_value] + "\n";
+        risc_v_code += "  add t4, t4, sp\n";
+        risc_v_code += "  lw t0, (t4)\n";
+    }
+    if(sto_dest->kind.tag==KOOPA_RVT_GLOBAL_ALLOC){
+        std::string sto_dest_name = sto_dest->name;
+        risc_v_code += "  la t1, " + sto_dest_name + "\n";
+        risc_v_code += "  sw t0, (t1)\n";
+    }else if(sto_dest->kind.tag==KOOPA_RVT_GET_ELEM_PTR){
+        risc_v_code += "  li t4, " + instruction2reg[sto_dest] + "\n";
+        risc_v_code += "  add t4, t4, sp\n";
+        risc_v_code += "  lw t1, (t4)\n";
+        risc_v_code += "  sw t0, 0(t1)\n";
+    }else if(sto_dest->kind.tag==KOOPA_RVT_GET_PTR){
+        risc_v_code += "  li t4, " + instruction2reg[sto_dest] + "\n";
+        risc_v_code += "  add t4, t4, sp\n";
+        risc_v_code += "  lw t1, (t4)\n";
+        risc_v_code += "  sw t0, 0(t1)\n";
+    }else{
+        risc_v_code += "  li t4, " + instruction2reg[sto_dest] + "\n";
+        risc_v_code += "  add t4, t4, sp\n";
+        risc_v_code += "  sw t0, (t4)\n";
     }
     //risc_v_code += "  sw t0, " + instruction2reg[sto_dest] + "(sp)\n";
     //instruction2reg[value] = "t0";
-    risc_v_code += "  sw " + instruction2reg[sto_value] + ", " + instruction2reg[sto_dest] + "(sp)\n";
-    release_reg(instruction2reg[sto_value]);
-    instruction2reg[value] = instruction2reg[sto_dest];
+    //risc_v_code += "  sw " + instruction2reg[sto_value] + ", " + instruction2reg[sto_dest] + "(sp)\n";
+    //release_reg(instruction2reg[sto_value]);
+    //instruction2reg[value] = instruction2reg[sto_dest];
 }
 
 void generate_code(const koopa_raw_jump_t &jump) {
@@ -253,7 +312,30 @@ void generate_code(const koopa_raw_branch_t &branch) {
     risc_v_code += "  j " + false_name + "\n\n";
 }
 
+void generate_code(const koopa_raw_call_t &call){
+    // 跳转指令
+    koopa_raw_function_t func = call.callee;
+    koopa_raw_slice_t args = call.args;
+    std::string func_name = func->name;
+    risc_v_code += "  call " +  func_name.substr(1) + "\n";
+    for(int i=1;i<=args.len;i++){
+        if(args.kind==KOOPA_RSIK_VALUE){
+            auto ptr = args.buffer[i-1];
+            auto arg = reinterpret_cast<koopa_raw_value_t>(ptr);
+            if(instruction2reg.find(arg)!=instruction2reg.end()){
+                risc_v_code += "  sw " + instruction2reg[arg] + ", " + std::to_string(st) + "(sp)\n";
+                std::cout<<"have the arg"<<std::endl;
+            }else{
+                std::cout<<"no have the arg"<<std::endl;
+            }
+        }else{
+            std::cout<<"UNKOWN KIND"<<std::endl;
+        }
+    }
+}
+
 void generate_code(const koopa_raw_value_t &value){
+    if(!value) return;
     //访问二元运算
     //...
     if (instruction2reg.find(value) != instruction2reg.end()) {
@@ -283,6 +365,9 @@ void generate_code(const koopa_raw_value_t &value){
     }
     else if(kind.tag==KOOPA_RVT_BRANCH){
         generate_code(kind.data.branch);
+    }
+    else if(kind.tag==KOOPA_RVT_CALL){
+        generate_code(kind.data.call);
     }
     else if(kind.tag==KOOPA_RVT_BINARY){
         koopa_raw_binary_t binary = kind.data.binary;
