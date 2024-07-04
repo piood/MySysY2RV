@@ -590,6 +590,7 @@ public:
             auto relexp_addr = reinterpret_cast<uintptr_t>(relexp.get());
             relexp->generate_Koopa_IR();
             IR_reg[relexp_addr] = "%"+std::to_string(now-1);
+
             if(eqexpop == "=="){
                 Koopa_IR += "  %" + std::to_string(now) + " = eq " + IR_reg[eqexp_addr] + ", " + IR_reg[relexp_addr] + "\n";
                 now++;
@@ -634,6 +635,7 @@ public:
             addexp->generate_Koopa_IR();
             auto addexp_addr = reinterpret_cast<uintptr_t>(addexp.get());
             IR_reg[addexp_addr] = "%"+std::to_string(now-1);
+
             if(relexpop == "<"){
                 Koopa_IR += "  %" + std::to_string(now) + " = lt " + IR_reg[relexp_addr] + ", " + IR_reg[addexp_addr] + "\n";
                 now++;
@@ -680,14 +682,13 @@ public:
 
     void generate_Koopa_IR() const override{
         if(addexp){
-            mulexp->generate_Koopa_IR();
-            auto mulexp_addr = reinterpret_cast<uintptr_t>(mulexp.get());
-            IR_reg[mulexp_addr] = "%"+std::to_string(now-1);
-
             addexp->generate_Koopa_IR();
             auto addexp_addr = reinterpret_cast<uintptr_t>(addexp.get());
             IR_reg[addexp_addr] = "%"+std::to_string(now-1);
 
+            mulexp->generate_Koopa_IR();
+            auto mulexp_addr = reinterpret_cast<uintptr_t>(mulexp.get());
+            IR_reg[mulexp_addr] = "%"+std::to_string(now-1);
             if(addexpop == "+"){
                 Koopa_IR += "  %" + std::to_string(now) + " = add " + IR_reg[addexp_addr] + ", " + IR_reg[mulexp_addr] + "\n";
                 now++;
