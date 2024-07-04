@@ -7,8 +7,7 @@
 #include <fstream>
 #include <sstream>
 #include "../ast/ast.hpp"
-#include "../ast/transform_koopa_raw.hpp"
-#include "../ast/generate_code.hpp"
+#include "../codegen/generate_code.hpp"
 #include "sysy.tab.hpp"
 
 
