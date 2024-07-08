@@ -7,7 +7,7 @@
 #include <fstream>
 #include <sstream>
 #include "../ast/ast.hpp"
-#include "../codegen/generate_code.hpp"
+#include "../codegen/generate_riscv_code.hpp"
 #include "sysy.tab.hpp"
 
 
@@ -65,7 +65,18 @@ int main(int argc, const char *argv[]) {
     fclose(output_file);
   }
   else if(strcmp(mode, "-riscv") == 0){
-    string risc_str =  Koopa_IR2RISC_V(IR_cstr);
+    std::ostringstream oss;
+    
+    // 备份标准输出流缓冲区
+    std::streambuf* originalCoutStreamBuf = std::cout.rdbuf();
+    
+    // 将标准输出流缓冲区重定向到 oss
+    std::cout.rdbuf(oss.rdbuf());
+    Koopa_IR2RISC_V(IR_cstr);
+    std::cout.rdbuf(originalCoutStreamBuf);
+
+    std::string risc_str = oss.str();
+
     FILE* output_file = fopen(output, "w");
     fwrite(risc_str.c_str(), sizeof(char), risc_str.size(), output_file);
     fclose(output_file);

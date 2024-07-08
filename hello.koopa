@@ -1,135 +1,54 @@
+decl @putint(i32)
+decl @putch(i32)
+
+global @COMPILER__a_ = alloc i32, 10
+fun @inc(): i32{
+%entry:
+  %0 = load @COMPILER__a_
+  %1 = add %0, 1
+  store %1, @COMPILER__a_
+  %2 = load @COMPILER__a_
+  ret %2
+
+}
+
+fun @print_a(){
+%entry:
+  %3 = load @COMPILER__a_
+  call @putint(%3)
+  call @putch(10)
+  ret
+}
 
 fun @main(): i32{
 %entry:
-  @COMPILER__a__41_0 = alloc i32
-  %0 = add 0, 1 
-  store %0, @COMPILER__a__41_0
-  @COMPILER__sum__41_0 = alloc i32
-  %1 = add 0, 0 
-  store %1, @COMPILER__sum__41_0
-  %2 = load @COMPILER__a__41_0
-  %3 = add 0, 2 
-  %4 = add %2, %3
-  store %4, @COMPILER__a__41_0
-  @COMPILER__b__41_0_0 = alloc i32
-  %5 = load @COMPILER__a__41_0
-  %6 = add 0, 3 
-  %7 = add %5, %6
-  store %7, @COMPILER__b__41_0_0
-  %8 = load @COMPILER__b__41_0_0
-  %9 = add 0, 4 
-  %10 = add %8, %9
-  store %10, @COMPILER__b__41_0_0
-  %11 = load @COMPILER__sum__41_0
-  %12 = load @COMPILER__a__41_0
-  %13 = add %11, %12
-  %14 = load @COMPILER__b__41_0_0
-  %15 = add %13, %14
-  store %15, @COMPILER__sum__41_0
-  %16 = load @COMPILER__b__41_0_0
-  %17 = add 0, 5 
-  %18 = add %16, %17
-  store %18, @COMPILER__b__41_0_0
-  @COMPILER__c__41_0_0_0 = alloc i32
-  %19 = load @COMPILER__b__41_0_0
-  %20 = add 0, 6 
-  %21 = add %19, %20
-  store %21, @COMPILER__c__41_0_0_0
-  %22 = load @COMPILER__a__41_0
-  %23 = load @COMPILER__c__41_0_0_0
-  %24 = add %22, %23
-  store %24, @COMPILER__a__41_0
-  %25 = load @COMPILER__sum__41_0
-  %26 = load @COMPILER__a__41_0
-  %27 = add %25, %26
-  %28 = load @COMPILER__b__41_0_0
-  %29 = add %27, %28
-  %30 = load @COMPILER__c__41_0_0_0
-  %31 = add %29, %30
-  store %31, @COMPILER__sum__41_0
-  %32 = load @COMPILER__b__41_0_0
-  %33 = load @COMPILER__a__41_0
-  %34 = add %32, %33
-  store %34, @COMPILER__b__41_0_0
-  @COMPILER__a__41_0_0_0_0 = alloc i32
-  %35 = load @COMPILER__c__41_0_0_0
-  %36 = add 0, 7 
-  %37 = add %35, %36
-  store %37, @COMPILER__a__41_0_0_0_0
-  %38 = load @COMPILER__a__41_0_0_0_0
-  %39 = add 0, 8 
-  %40 = add %38, %39
-  store %40, @COMPILER__a__41_0_0_0_0
-  %41 = load @COMPILER__sum__41_0
-  %42 = load @COMPILER__a__41_0_0_0_0
-  %43 = add %41, %42
-  %44 = load @COMPILER__b__41_0_0
-  %45 = add %43, %44
-  %46 = load @COMPILER__c__41_0_0_0
-  %47 = add %45, %46
-  store %47, @COMPILER__sum__41_0
-  %48 = load @COMPILER__b__41_0_0
-  %49 = load @COMPILER__a__41_0_0_0_0
-  %50 = add %48, %49
-  store %50, @COMPILER__b__41_0_0
-  @COMPILER__b__41_0_0_0_0_0 = alloc i32
-  %51 = load @COMPILER__c__41_0_0_0
-  %52 = add 0, 9 
-  %53 = add %51, %52
-  store %53, @COMPILER__b__41_0_0_0_0_0
-  %54 = load @COMPILER__a__41_0_0_0_0
-  %55 = add 0, 10 
-  %56 = add %54, %55
-  store %56, @COMPILER__a__41_0_0_0_0
-  %57 = load @COMPILER__b__41_0_0_0_0_0
-  %58 = add 0, 12 
-  %59 = add %57, %58
-  store %59, @COMPILER__b__41_0_0_0_0_0
-  %60 = load @COMPILER__sum__41_0
-  %61 = add 0, 11
-  %62 = add %60, %61
-  %63 = load @COMPILER__b__41_0_0_0_0_0
-  %64 = add %62, %63
-  %65 = load @COMPILER__c__41_0_0_0
-  %66 = add %64, %65
-  store %66, @COMPILER__sum__41_0
-  %67 = load @COMPILER__c__41_0_0_0
-  %68 = load @COMPILER__b__41_0_0_0_0_0
-  %69 = add %67, %68
-  store %69, @COMPILER__c__41_0_0_0
-  @COMPILER__c__41_0_0_0_0_0_0 = alloc i32
-  %70 = load @COMPILER__b__41_0_0_0_0_0
-  %71 = add 0, 13 
-  %72 = add %70, %71
-  store %72, @COMPILER__c__41_0_0_0_0_0_0
-  %73 = load @COMPILER__c__41_0_0_0_0_0_0
-  %74 = add 0, 11
-  %75 = add %73, %74
-  store %75, @COMPILER__c__41_0_0_0_0_0_0
-  %76 = load @COMPILER__sum__41_0
-  %77 = add 0, 11
-  %78 = add %76, %77
-  %79 = load @COMPILER__b__41_0_0_0_0_0
-  %80 = add %78, %79
-  %81 = load @COMPILER__c__41_0_0_0_0_0_0
-  %82 = add %80, %81
-  store %82, @COMPILER__sum__41_0
-  %83 = load @COMPILER__sum__41_0
-  %84 = load @COMPILER__c__41_0_0_0
-  %85 = sub %83, %84
-  store %85, @COMPILER__sum__41_0
-  %86 = load @COMPILER__sum__41_0
-  %87 = load @COMPILER__b__41_0_0
-  %88 = sub %86, %87
-  store %88, @COMPILER__sum__41_0
-  %89 = load @COMPILER__sum__41_0
-  %90 = load @COMPILER__a__41_0
-  %91 = sub %89, %90
-  store %91, @COMPILER__sum__41_0
-  %92 = load @COMPILER__sum__41_0
-  %93 = add 0, 77 
-  %94 = mod %92, %93
-  ret %94
+  @COMPILER__i__43_0 = alloc i32
+  store 0, @COMPILER__i__43_0
+  jump %while_1
+
+%while_1:
+  %4 = load @COMPILER__i__43_0
+  %5 = lt %4, 10
+	br %5, %while_then_1, %end_while_1
+
+%while_then_1:
+  %6 = call @inc()
+  @COMPILER__a__43_0_31_0 = alloc i32
+  store 1, @COMPILER__a__43_0_31_0
+  %7 = load @COMPILER__a__43_0_31_0
+  %8 = add %7, 2
+  store %8, @COMPILER__a__43_0_31_0
+  %9 = load @COMPILER__a__43_0_31_0
+  call @putint(%9)
+  call @putch(10)
+  call @print_a()
+  %10 = load @COMPILER__i__43_0
+  %11 = add %10, 1
+  store %11, @COMPILER__i__43_0
+	jump %while_1
+
+%end_while_1:
+  ret 0
 
 }
 

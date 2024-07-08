@@ -44,6 +44,9 @@ static std::string Koopa_IR = ""; // Koopa_IR
 static std::string global_IR = ""; // 全局变量，库函数声明IR
 static std::unordered_set<std::string> lib_func_decl_set; // 库函数声明集合
 
+// 寄存器->数值，保存使用的number，来方便直接进行计算，而不是通过%0 = add 0, 1，放入寄存器后再计算
+static std::unordered_map<std::string, std::string> reg2number;
+
 static std::string Get_Identifier(std::string ident){
     std::string tempdepth_str = depth_str; //获取当前深度
     while(var_type.find("COMPILER__" + ident+"_"+tempdepth_str) == var_type.end()){
@@ -294,6 +297,8 @@ class StmtAST : public BaseAST {
         exp->generate_Koopa_IR();
         auto exp_addr = reinterpret_cast<uintptr_t>(exp.get());
         IR_reg[exp_addr] = "%"+std::to_string(now-1);
+        std::string addr = IR_reg[exp_addr];
+        if(reg2number.find(addr) != reg2number.end()) addr = reg2number[addr];
         //Koopa_IR += lval->generate_Koopa_IR();
         int val = exp->Calc();
         LValAST* LVal_ptr = dynamic_cast<LValAST*>(lval.get());
@@ -301,14 +306,17 @@ class StmtAST : public BaseAST {
         std::string ident = LVal_ptr->ident;
         std::string Identifier = Get_Identifier(ident);
 
-        Koopa_IR += "  store " + IR_reg[exp_addr] + ", @" + Identifier + "\n";
+        Koopa_IR += "  store " + addr + ", @" + Identifier + "\n";
         
     } else if(type==0) {
         if(be_end_bl[depth_str]) ;
         exp->generate_Koopa_IR();
         auto exp_addr = reinterpret_cast<uintptr_t>(exp.get());
         IR_reg[exp_addr] = "%"+std::to_string(now-1);
-        Koopa_IR += "  ret " + IR_reg[exp_addr] + "\n\n";
+        std::string addr = IR_reg[exp_addr];
+        if(reg2number.find(addr) != reg2number.end()) addr = reg2number[addr];
+
+        Koopa_IR += "  ret " + addr + "\n\n";
         be_end_bl[depth_str] = true;
 
 
@@ -332,7 +340,10 @@ class StmtAST : public BaseAST {
 
         exp->generate_Koopa_IR();
 
-        Koopa_IR += "\tbr %" + std::to_string(now-1) + ", %then_" + std::to_string(now_if) + ", %end_" + std::to_string(now_if) + "\n\n";
+        std::string addr1 = "%"+std::to_string(now-1);
+        if(reg2number.find(addr1) != reg2number.end()) addr1 = reg2number[addr1];
+
+        Koopa_IR += "\tbr " + addr1 + ", %then_" + std::to_string(now_if) + ", %end_" + std::to_string(now_if) + "\n\n";
         Koopa_IR += "%then_" + std::to_string(now_if) + ":\n";
 
         depth_str += "_1"+std::to_string(now_if);
@@ -354,7 +365,10 @@ class StmtAST : public BaseAST {
         if_cnt++;
         int now_if=if_cnt;
         exp->generate_Koopa_IR();
-        Koopa_IR += "\tbr %" + std::to_string(now-1) + ", %then_" + std::to_string(now_if) + ", %else_" + std::to_string(now_if) + "\n\n";
+        std::string addr1 = "%"+std::to_string(now-1);
+        if(reg2number.find(addr1) != reg2number.end()) addr1 = reg2number[addr1];
+
+        Koopa_IR += "\tbr " + addr1 + ", %then_" + std::to_string(now_if) + ", %else_" + std::to_string(now_if) + "\n\n";
         Koopa_IR += "%then_" + std::to_string(now_if) + ":\n";
 
 
@@ -394,8 +408,11 @@ class StmtAST : public BaseAST {
         Koopa_IR += "%while_" + std::to_string(while_now) + ":\n";
 
         exp->generate_Koopa_IR();
+
+        std::string addr1 = "%"+std::to_string(now-1);
+        if(reg2number.find(addr1) != reg2number.end()) addr1 = reg2number[addr1];
  
-        if(!be_end_bl[depth_str]) Koopa_IR += "\tbr %" + std::to_string(now-1) + ", %while_then_" + std::to_string(while_now) + ", %end_while_" + std::to_string(while_now) + "\n\n";
+        if(!be_end_bl[depth_str]) Koopa_IR += "\tbr " + addr1 + ", %while_then_" + std::to_string(while_now) + ", %end_while_" + std::to_string(while_now) + "\n\n";
 
         Koopa_IR += "%while_then_" + std::to_string(while_now) + ":\n";
 
@@ -444,10 +461,12 @@ public:
         return lorexp->Calc();
     }
 
-    std::vector<int> Para() const{
-        std::vector<int> paras;
+    std::vector<std::string> Para() const{
+        std::vector<std::string> paras;
         generate_Koopa_IR();
-        paras.push_back(now-1);
+        std::string addr = "%" + std::to_string(now-1);
+        if(reg2number.find(addr)!=reg2number.end()) addr = reg2number[addr];
+        paras.push_back(addr);
         return paras;
     }
 };
@@ -465,14 +484,18 @@ public:
             int now1 = now - 1;
             int temp = now;
             Koopa_IR += "\t@result_" + std::to_string(temp) + "_" + depth_str + " = alloc i32\n";
-            Koopa_IR += "\t%" + std::to_string(now) + " = ne 0, %" + std::to_string(now1) + "\n";
+            std::string addr1 = "%"+std::to_string(now1);
+            if(reg2number.find(addr1) != reg2number.end()) addr1 = reg2number[addr1];
+
+
+            Koopa_IR += "\t%" + std::to_string(now) + " = ne 0, " + addr1 + "\n";
             Koopa_IR += "\tstore %" + std::to_string(now) + ", @result_" + std::to_string(temp) + "_" + depth_str + "\n";
 
             now++;
             if_cnt++;
             int now_if = if_cnt;
 
-            Koopa_IR += "\tbr %" + std::to_string(now1) + ", %end_" + std::to_string(now_if) + ", %then_" + std::to_string(now_if) + "\n\n";
+            Koopa_IR += "\tbr " + addr1 + ", %end_" + std::to_string(now_if) + ", %then_" + std::to_string(now_if) + "\n\n";
             Koopa_IR += "%then_" + std::to_string(now_if) + ":\n";
             landexp->generate_Koopa_IR();
             int now2 = now - 1;
@@ -485,17 +508,6 @@ public:
             Koopa_IR += "\t%" + std::to_string(now) + " = load @result_" + std::to_string(temp) + "_" + depth_str + "\n";
             now++;
         }
-        /*if(lorexp){
-            lorexp->generate_Koopa_IR();
-            IR_reg[reinterpret_cast<uintptr_t>(lorexp.get())] = "%"+std::to_string(now-1);
-            landexp->generate_Koopa_IR();
-            IR_reg[reinterpret_cast<uintptr_t>(landexp.get())] = "%"+std::to_string(now-1);
-            if(lorexpop == "||"){
-                Koopa_IR += "  %" + std::to_string(now) + " = or " + IR_reg[reinterpret_cast<uintptr_t>(lorexp.get())] + ", " + IR_reg[reinterpret_cast<uintptr_t>(landexp.get())] + "\n" ;
-                Koopa_IR += "  %" + std::to_string(now+1) + " = ne " + "%"+std::to_string(now) + ", 0" + "\n";
-                now+=2;
-            }
-        }*/
         else{
             landexp->generate_Koopa_IR();
             IR_reg[reinterpret_cast<uintptr_t>(landexp.get())] = "%"+std::to_string(now-1);
@@ -525,14 +537,17 @@ public:
             int now1 = now - 1;
             int temp = now;
             Koopa_IR += "\t@result_" + std::to_string(temp) + "_" + depth_str + " = alloc i32\n";
-            Koopa_IR += "\t%" + std::to_string(now) + " = ne 0, %" + std::to_string(now1) + "\n";
+            std::string addr1 = "%"+std::to_string(now1);
+            if(reg2number.find(addr1) != reg2number.end()) addr1 = reg2number[addr1];
+
+            Koopa_IR += "\t%" + std::to_string(now) + " = ne 0, " + addr1 + "\n";
             Koopa_IR += "\tstore %" + std::to_string(now) + ", @result_" + std::to_string(temp) + "_" + depth_str + "\n";
 
             now++;
             if_cnt++;
             int now_if = if_cnt;
 
-            Koopa_IR += "\tbr %" + std::to_string(now1) + ", %then_" + std::to_string(now_if) + ", %end_" + std::to_string(now_if) + "\n\n";
+            Koopa_IR += "\tbr " + addr1 + ", %then_" + std::to_string(now_if) + ", %end_" + std::to_string(now_if) + "\n\n";
             Koopa_IR += "%then_" + std::to_string(now_if) + ":\n";
             eqexp->generate_Koopa_IR();
             int now2 = now - 1;
@@ -586,16 +601,20 @@ public:
             eqexp->generate_Koopa_IR();
             auto eqexp_addr = reinterpret_cast<uintptr_t>(eqexp.get());
             IR_reg[eqexp_addr] = "%"+std::to_string(now-1);
+            std::string addr1 = IR_reg[eqexp_addr];
+            if(reg2number.find(addr1) != reg2number.end()) addr1 = reg2number[addr1];
 
             auto relexp_addr = reinterpret_cast<uintptr_t>(relexp.get());
             relexp->generate_Koopa_IR();
             IR_reg[relexp_addr] = "%"+std::to_string(now-1);
+            std::string addr2 = IR_reg[relexp_addr];
+            if(reg2number.find(addr2) != reg2number.end()) addr2 = reg2number[addr2];
 
             if(eqexpop == "=="){
-                Koopa_IR += "  %" + std::to_string(now) + " = eq " + IR_reg[eqexp_addr] + ", " + IR_reg[relexp_addr] + "\n";
+                Koopa_IR += "  %" + std::to_string(now) + " = eq " + addr1 + ", " + addr2 + "\n";
                 now++;
             }else if(eqexpop == "!="){
-                Koopa_IR += "  %" + std::to_string(now) + " = ne " + IR_reg[eqexp_addr] + ", " + IR_reg[relexp_addr] + "\n";
+                Koopa_IR += "  %" + std::to_string(now) + " = ne " + addr1 + ", " + addr2 + "\n";
                 now++;
             }
         }
@@ -630,23 +649,27 @@ public:
             relexp->generate_Koopa_IR();
             auto relexp_addr = reinterpret_cast<uintptr_t>(relexp.get());
             IR_reg[relexp_addr] = "%"+std::to_string(now-1);
+            std::string addr1 = IR_reg[relexp_addr];
+            if(reg2number.find(addr1) != reg2number.end()) addr1 = reg2number[addr1];
 
 
             addexp->generate_Koopa_IR();
             auto addexp_addr = reinterpret_cast<uintptr_t>(addexp.get());
             IR_reg[addexp_addr] = "%"+std::to_string(now-1);
+            std::string addr2 = IR_reg[addexp_addr];
+            if(reg2number.find(addr2) != reg2number.end()) addr2 = reg2number[addr2];
 
             if(relexpop == "<"){
-                Koopa_IR += "  %" + std::to_string(now) + " = lt " + IR_reg[relexp_addr] + ", " + IR_reg[addexp_addr] + "\n";
+                Koopa_IR += "  %" + std::to_string(now) + " = lt " + addr1 + ", " + addr2 + "\n";
                 now++;
             }else if(relexpop == "<="){
-                Koopa_IR += "  %" + std::to_string(now) + " = le " + IR_reg[relexp_addr] + ", " + IR_reg[addexp_addr] + "\n";
+                Koopa_IR += "  %" + std::to_string(now) + " = le " + addr1 + ", " + addr2 + "\n";
                 now++;
             }else if(relexpop == ">"){
-                Koopa_IR += "  %" + std::to_string(now) + " = gt " + IR_reg[relexp_addr] + ", " + IR_reg[addexp_addr] + "\n";
+                Koopa_IR += "  %" + std::to_string(now) + " = gt " + addr1 + ", " + addr2 + "\n";
                 now++;
             }else if(relexpop == ">="){
-                Koopa_IR += "  %" + std::to_string(now) + " = ge " + IR_reg[relexp_addr] + ", " + IR_reg[addexp_addr] + "\n";
+                Koopa_IR += "  %" + std::to_string(now) + " = ge " + addr1 + ", " + addr2 + "\n";
                 now++;
             }
         }
@@ -685,15 +708,20 @@ public:
             addexp->generate_Koopa_IR();
             auto addexp_addr = reinterpret_cast<uintptr_t>(addexp.get());
             IR_reg[addexp_addr] = "%"+std::to_string(now-1);
+            std::string addr1 = IR_reg[addexp_addr];
+            if(reg2number.find(addr1) != reg2number.end()) addr1 = reg2number[addr1];
 
             mulexp->generate_Koopa_IR();
             auto mulexp_addr = reinterpret_cast<uintptr_t>(mulexp.get());
             IR_reg[mulexp_addr] = "%"+std::to_string(now-1);
+            std::string addr2 = IR_reg[mulexp_addr];
+            if(reg2number.find(addr2) != reg2number.end()) addr2 = reg2number[addr2];
+
             if(addexpop == "+"){
-                Koopa_IR += "  %" + std::to_string(now) + " = add " + IR_reg[addexp_addr] + ", " + IR_reg[mulexp_addr] + "\n";
+                Koopa_IR += "  %" + std::to_string(now) + " = add " + addr1 + ", " + addr2 + "\n";
                 now++;
             }else if(addexpop == "-"){
-                Koopa_IR += "  %" + std::to_string(now) + " = sub " + IR_reg[addexp_addr] + ", " + IR_reg[mulexp_addr] + "\n";
+                Koopa_IR += "  %" + std::to_string(now) + " = sub " + addr1 + ", " + addr2 + "\n";
                 now++;
             }
         }
@@ -728,19 +756,24 @@ public:
             mulexp->generate_Koopa_IR();
             auto mulexp_addr = reinterpret_cast<uintptr_t>(mulexp.get());
             IR_reg[mulexp_addr] = "%"+std::to_string(now-1);
+            std::string addr1 = IR_reg[mulexp_addr];
+            if(reg2number.find(addr1) != reg2number.end()) addr1 = reg2number[addr1];
 
             unaryexp->generate_Koopa_IR();
             auto unaryexp_addr = reinterpret_cast<uintptr_t>(unaryexp.get());
             IR_reg[unaryexp_addr] = "%"+std::to_string(now-1);
+            std::string addr2 = IR_reg[unaryexp_addr];
+            if(reg2number.find(addr2) != reg2number.end()) addr2 = reg2number[addr2];
+
             if(mulexpop == "*"){
-                Koopa_IR +="  %" + std::to_string(now) + " = mul " + IR_reg[mulexp_addr] + ", " + IR_reg[unaryexp_addr] + "\n";
+                Koopa_IR += "  %" + std::to_string(now) + " = mul " + addr1 + ", " + addr2 + "\n";
                 now++;
             }else if(mulexpop == "/"){
-                Koopa_IR += "  %" + std::to_string(now) + " = div " + IR_reg[mulexp_addr] + ", " + IR_reg[unaryexp_addr] + "\n";
+                Koopa_IR += "  %" + std::to_string(now) + " = div " + addr1 + ", " + addr2 + "\n";
                 now++;
             }
             else if(mulexpop == "%"){
-                Koopa_IR += "  %" + std::to_string(now) + " = mod " + IR_reg[mulexp_addr] + ", " + IR_reg[unaryexp_addr] + "\n";
+                Koopa_IR += "  %" + std::to_string(now) + " = mod " + addr1 + ", " + addr2 + "\n";
                 now++;
             }
         }
@@ -793,18 +826,20 @@ public:
         }
     }
 
-    std::vector<int> Para() const{
-        std::vector<int> paras;
+    std::vector<std::string> Para() const{
+        std::vector<std::string> paras;
         if(funcrparams){
             FuncRParamsAST* FuncRParamsAST_ptr1 = dynamic_cast<FuncRParamsAST*>(funcrparams.get());
-            std::vector<int> para1 = FuncRParamsAST_ptr1->Para();
+            std::vector<std::string> para1 = FuncRParamsAST_ptr1->Para();
             ExpAST* FuncRParamsAST_ptr2 = dynamic_cast<ExpAST*>(exp.get());
-            std::vector<int> para2 =  FuncRParamsAST_ptr2->Para();
+            std::vector<std::string> para2 =  FuncRParamsAST_ptr2->Para();
             for(auto it=para1.begin(); it!=para1.end(); it++) paras.push_back(*it);
             for(auto it=para2.begin(); it!=para2.end(); it++) paras.push_back(*it);
         }else{
             generate_Koopa_IR();
-            paras.push_back(now-1);
+            std::string addr = "%" + std::to_string(now-1);
+            if(reg2number.find(addr)!=reg2number.end()) addr = reg2number[addr];
+            paras.push_back(addr);
         }
         return paras;
     }
@@ -848,11 +883,15 @@ public:
             unaryexp->generate_Koopa_IR();
             auto unaryexp_addr = reinterpret_cast<uintptr_t>(unaryexp.get());
             IR_reg[unaryexp_addr] = "%"+std::to_string(now-1);
+            std::string addr = IR_reg[unaryexp_addr];
+            if(reg2number.find(addr) != reg2number.end()) addr = reg2number[addr];
+
+
             if(unaryop == "-"){
-                Koopa_IR += "  %" + std::to_string(now) + " = sub 0, " + IR_reg[unaryexp_addr] +" \n";
+                Koopa_IR += "  %" + std::to_string(now) + " = sub 0, " + addr +" \n";
                 now++;
             }else if(unaryop == "!"){
-                Koopa_IR += "  %" + std::to_string(now) + " = eq 0, " + IR_reg[unaryexp_addr] +" \n";
+                Koopa_IR += "  %" + std::to_string(now) + " = eq 0, " + addr +" \n";
                 now++;
             }else if(unaryop == "+"){
                 int x = 1;
@@ -873,7 +912,7 @@ public:
         }else if(type==4){
             be_func_para = 1;
             FuncRParamsAST* FuncRParamsAST_ptr = dynamic_cast<FuncRParamsAST*>(funcrparams.get());
-            std::vector<int> paras = FuncRParamsAST_ptr->Para();
+            std::vector<std::string> paras = FuncRParamsAST_ptr->Para();
             if(ident=="getint"||ident=="getch"||ident=="getarray"||func_ret[ident]){
                 Koopa_IR += "  %"+std::to_string(now)+" = call @"+ident+"(";
                 now++;
@@ -882,7 +921,8 @@ public:
             }
             for(auto it=paras.begin(); it!=paras.end(); it++){
                 if(it!=paras.begin()) Koopa_IR += ", ";
-                Koopa_IR += "%"+std::to_string(*it);
+                std::string addr = *it;
+                Koopa_IR += addr;
             }
             Koopa_IR += ")\n";
             be_func_para = 0;
@@ -922,8 +962,9 @@ public:
             auto lval_addr = reinterpret_cast<uintptr_t>(lval.get());
             IR_reg[lval_addr] = "%"+std::to_string(now-1);
         } else {
-            Koopa_IR += "  %" + std::to_string(now) + " = add 0, " + std::to_string(number) +" \n";
-            now++;
+            //Koopa_IR += "  %" + std::to_string(now) + " = add 0, " + std::to_string(number) +" \n";
+            reg2number["%" + std::to_string(now-1)] = std::to_string(number);
+            //now++;
         }
         return ;
     }
@@ -1017,7 +1058,10 @@ public:
                 var_type[Identifier] = 1;
                 const_val[Identifier] = initval->Calc();
                 initval->generate_Koopa_IR();
-                Koopa_IR += "  store %" + std::to_string(now-1) + ", @" + Identifier + "\n";
+
+                std::string addr = "%"+std::to_string(now-1);
+                if(reg2number.find(addr) != reg2number.end()) addr = reg2number[addr];
+                Koopa_IR += "  store " + addr + ", @" + Identifier + "\n";
             }else{
                 std::string Identifier = "COMPILER__" + ident + "_"+ depth_str;
                 var_type[Identifier] = 1;
@@ -1109,15 +1153,6 @@ public:
         IR_reg[constinitval_addr] = std::to_string(val);
         std::string Identifier = "COMPILER__" + ident + "_"+ depth_str;
         const_reg[Identifier] = IR_reg[constinitval_addr]; // 常量放入对应寄存器
-        //IR_reg[constinitval_addr] = "%"+std::to_string(now);
-
-        /*
-        std::string Identifier = "COMPILER__" + ident + "_"+ std::to_string(nowdepth);
-
-        const_reg[Identifier] = IR_reg[constinitval_addr]; // 常量放入对应寄存器
-        Koopa_IR += "  "+ IR_reg[constinitval_addr] + " = add 0, " + std::to_string(val) + "\n";
-        now++;
-        */
         return ;
     }
 
