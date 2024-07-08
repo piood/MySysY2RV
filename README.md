@@ -1,5 +1,5 @@
 # MySysY2RV
-北大编译原理课程，使用C++，独立完成的C语言子集SysY编译器，实现了从C语言编译到Koopa Ir，再从Koopa Ir到RISC-V汇编的编译。
+北大编译原理课程，使用C++，独立完成的C语言子集SysY编译器，实现了从C语言编译到Koopa IR，再从Koopa IR到RISC-V汇编的编译。
 
 ```C
 int a = 10;
@@ -29,7 +29,7 @@ int main() {
 }
 ```
 
-通过将上述C语言（SysY语言）翻译成Koopa IR
+通过AST将上述C语言（SysY语言）翻译成Koopa IR
 
 ```Koopa IR
 decl @putint(i32)
@@ -87,7 +87,7 @@ fun @main(): i32{
 }
 ```
 
-再将Koopa IR转换成RSIC-V汇编程序，可以直接运行
+再通过CodeGen将Koopa IR转换成RSIC-V汇编程序，可以直接运行
 
 ```RSIC-V asm
   .data
