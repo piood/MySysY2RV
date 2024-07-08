@@ -63,7 +63,7 @@ fun @main(): i32{
 %while_1:
   %4 = load @COMPILER__i__43_0
   %5 = lt %4, 10
-	br %5, %while_then_1, %end_while_1
+  br %5, %while_then_1, %end_while_1
 
 %while_then_1:
   %6 = call @inc()
@@ -79,13 +79,12 @@ fun @main(): i32{
   %10 = load @COMPILER__i__43_0
   %11 = add %10, 1
   store %11, @COMPILER__i__43_0
-	jump %while_1
+  jump %while_1
 
 %end_while_1:
   ret 0
 
 }
-
 ```
 
 再将Koopa IR转换成RSIC-V汇编程序，可以直接运行

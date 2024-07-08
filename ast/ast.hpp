@@ -343,7 +343,7 @@ class StmtAST : public BaseAST {
         std::string addr1 = "%"+std::to_string(now-1);
         if(reg2number.find(addr1) != reg2number.end()) addr1 = reg2number[addr1];
 
-        Koopa_IR += "\tbr " + addr1 + ", %then_" + std::to_string(now_if) + ", %end_" + std::to_string(now_if) + "\n\n";
+        Koopa_IR += "  br " + addr1 + ", %then_" + std::to_string(now_if) + ", %end_" + std::to_string(now_if) + "\n\n";
         Koopa_IR += "%then_" + std::to_string(now_if) + ":\n";
 
         depth_str += "_1"+std::to_string(now_if);
@@ -353,7 +353,7 @@ class StmtAST : public BaseAST {
         if_blockitemlist->generate_Koopa_IR(); // 生成if的block
         
 
-        if(!be_end_bl[depth_str+"_0"]) Koopa_IR += "\tjump %end_" + std::to_string(now_if) + "\n\n";
+        if(!be_end_bl[depth_str+"_0"]) Koopa_IR += "  jump %end_" + std::to_string(now_if) + "\n\n";
 
         nowdepth_str = f[depth_str];
         depth_str = nowdepth_str;
@@ -368,7 +368,7 @@ class StmtAST : public BaseAST {
         std::string addr1 = "%"+std::to_string(now-1);
         if(reg2number.find(addr1) != reg2number.end()) addr1 = reg2number[addr1];
 
-        Koopa_IR += "\tbr " + addr1 + ", %then_" + std::to_string(now_if) + ", %else_" + std::to_string(now_if) + "\n\n";
+        Koopa_IR += "  br " + addr1 + ", %then_" + std::to_string(now_if) + ", %else_" + std::to_string(now_if) + "\n\n";
         Koopa_IR += "%then_" + std::to_string(now_if) + ":\n";
 
 
@@ -379,7 +379,7 @@ class StmtAST : public BaseAST {
 
 
         // 此时从if的block中退出，需要用nowdepth+1查看之前if的block中有没有出现return，如果if的block没有结束，跳转到end
-        if(!be_end_bl[depth_str+"_0"]) Koopa_IR += "\tjump %end_" + std::to_string(now_if) + "\n\n";
+        if(!be_end_bl[depth_str+"_0"]) Koopa_IR += "  jump %end_" + std::to_string(now_if) + "\n\n";
 
         nowdepth_str = f[depth_str];
         depth_str = nowdepth_str;
@@ -392,7 +392,7 @@ class StmtAST : public BaseAST {
 
         else_blockitemlist->generate_Koopa_IR();
         
-        if(!be_end_bl[depth_str+"_0"]) Koopa_IR += "\tjump %end_" + std::to_string(now_if) + "\n\n";
+        if(!be_end_bl[depth_str+"_0"]) Koopa_IR += "  jump %end_" + std::to_string(now_if) + "\n\n";
 
         nowdepth_str = f[depth_str];
         depth_str = nowdepth_str;
@@ -412,7 +412,7 @@ class StmtAST : public BaseAST {
         std::string addr1 = "%"+std::to_string(now-1);
         if(reg2number.find(addr1) != reg2number.end()) addr1 = reg2number[addr1];
  
-        if(!be_end_bl[depth_str]) Koopa_IR += "\tbr " + addr1 + ", %while_then_" + std::to_string(while_now) + ", %end_while_" + std::to_string(while_now) + "\n\n";
+        if(!be_end_bl[depth_str]) Koopa_IR += "  br " + addr1 + ", %while_then_" + std::to_string(while_now) + ", %end_while_" + std::to_string(while_now) + "\n\n";
 
         Koopa_IR += "%while_then_" + std::to_string(while_now) + ":\n";
 
@@ -424,7 +424,7 @@ class StmtAST : public BaseAST {
         while_blockitemlist->generate_Koopa_IR(); // 生成while的block
 
         // 此时从if的block中退出，需要用nowdepth+1查看之前if的block中有没有出现return，如果if的block没有结束，跳转到end
-        if(!be_end_bl[depth_str+"_0"]) Koopa_IR += "\tjump %while_" + std::to_string(while_now) + "\n\n";
+        if(!be_end_bl[depth_str+"_0"]) Koopa_IR += "  jump %while_" + std::to_string(while_now) + "\n\n";
 
         Koopa_IR += "%end_while_" + std::to_string(while_now) + ":\n";
 
@@ -433,10 +433,10 @@ class StmtAST : public BaseAST {
         nowdepth_str = f[depth_str];
         depth_str = nowdepth_str;
     } else if(type==14){
-        Koopa_IR += "\tjump %end_while_" + std::to_string(while_now)+ "\n";
+        Koopa_IR += "  jump %end_while_" + std::to_string(while_now)+ "\n";
         be_end_bl[nowdepth_str]=true; 
     } else if(type==15){
-        Koopa_IR +=  "\tjump %while_" + std::to_string(while_now)+ "\n";
+        Koopa_IR +=  "  jump %while_" + std::to_string(while_now)+ "\n";
         be_end_bl[nowdepth_str]=true;
     }
     return;
@@ -483,29 +483,29 @@ public:
             lorexp->generate_Koopa_IR();
             int now1 = now - 1;
             int temp = now;
-            Koopa_IR += "\t@result_" + std::to_string(temp) + "_" + depth_str + " = alloc i32\n";
+            Koopa_IR += "  @result_" + std::to_string(temp) + "_" + depth_str + " = alloc i32\n";
             std::string addr1 = "%"+std::to_string(now1);
             if(reg2number.find(addr1) != reg2number.end()) addr1 = reg2number[addr1];
 
 
-            Koopa_IR += "\t%" + std::to_string(now) + " = ne 0, " + addr1 + "\n";
-            Koopa_IR += "\tstore %" + std::to_string(now) + ", @result_" + std::to_string(temp) + "_" + depth_str + "\n";
+            Koopa_IR += "  %" + std::to_string(now) + " = ne 0, " + addr1 + "\n";
+            Koopa_IR += "  store %" + std::to_string(now) + ", @result_" + std::to_string(temp) + "_" + depth_str + "\n";
 
             now++;
             if_cnt++;
             int now_if = if_cnt;
 
-            Koopa_IR += "\tbr " + addr1 + ", %end_" + std::to_string(now_if) + ", %then_" + std::to_string(now_if) + "\n\n";
+            Koopa_IR += "  br " + addr1 + ", %end_" + std::to_string(now_if) + ", %then_" + std::to_string(now_if) + "\n\n";
             Koopa_IR += "%then_" + std::to_string(now_if) + ":\n";
             landexp->generate_Koopa_IR();
             int now2 = now - 1;
 
-            Koopa_IR += "\t%" + std::to_string(now) + " = ne 0, %" + std::to_string(now2) + "\n";
+            Koopa_IR += "  %" + std::to_string(now) + " = ne 0, %" + std::to_string(now2) + "\n";
             now++;
-            Koopa_IR += "\tstore %" + std::to_string(now-1) + ", @result_" + std::to_string(temp) + "_" + depth_str + "\n";
-            Koopa_IR += "\tjump %end_" + std::to_string(now_if) + "\n\n";
+            Koopa_IR += "  store %" + std::to_string(now-1) + ", @result_" + std::to_string(temp) + "_" + depth_str + "\n";
+            Koopa_IR += "  jump %end_" + std::to_string(now_if) + "\n\n";
             Koopa_IR += "%end_" + std::to_string(now_if) + ":\n";
-            Koopa_IR += "\t%" + std::to_string(now) + " = load @result_" + std::to_string(temp) + "_" + depth_str + "\n";
+            Koopa_IR += "  %" + std::to_string(now) + " = load @result_" + std::to_string(temp) + "_" + depth_str + "\n";
             now++;
         }
         else{
@@ -536,27 +536,27 @@ public:
             landexp->generate_Koopa_IR();
             int now1 = now - 1;
             int temp = now;
-            Koopa_IR += "\t@result_" + std::to_string(temp) + "_" + depth_str + " = alloc i32\n";
+            Koopa_IR += "  @result_" + std::to_string(temp) + "_" + depth_str + " = alloc i32\n";
             std::string addr1 = "%"+std::to_string(now1);
             if(reg2number.find(addr1) != reg2number.end()) addr1 = reg2number[addr1];
 
-            Koopa_IR += "\t%" + std::to_string(now) + " = ne 0, " + addr1 + "\n";
-            Koopa_IR += "\tstore %" + std::to_string(now) + ", @result_" + std::to_string(temp) + "_" + depth_str + "\n";
+            Koopa_IR += "  %" + std::to_string(now) + " = ne 0, " + addr1 + "\n";
+            Koopa_IR += "  store %" + std::to_string(now) + ", @result_" + std::to_string(temp) + "_" + depth_str + "\n";
 
             now++;
             if_cnt++;
             int now_if = if_cnt;
 
-            Koopa_IR += "\tbr " + addr1 + ", %then_" + std::to_string(now_if) + ", %end_" + std::to_string(now_if) + "\n\n";
+            Koopa_IR += "  br " + addr1 + ", %then_" + std::to_string(now_if) + ", %end_" + std::to_string(now_if) + "\n\n";
             Koopa_IR += "%then_" + std::to_string(now_if) + ":\n";
             eqexp->generate_Koopa_IR();
             int now2 = now - 1;
-            Koopa_IR += "\t%" + std::to_string(now) + " = ne 0, %" + std::to_string(now2) + "\n";
+            Koopa_IR += "  %" + std::to_string(now) + " = ne 0, %" + std::to_string(now2) + "\n";
             now++;
-            Koopa_IR += "\tstore %" + std::to_string(now-1) + ", @result_" + std::to_string(temp) + "_" + depth_str + "\n";
-            Koopa_IR += "\tjump %end_" + std::to_string(now_if) + "\n\n";
+            Koopa_IR += "  store %" + std::to_string(now-1) + ", @result_" + std::to_string(temp) + "_" + depth_str + "\n";
+            Koopa_IR += "  jump %end_" + std::to_string(now_if) + "\n\n";
             Koopa_IR += "%end_" + std::to_string(now_if) + ":\n";
-            Koopa_IR += "\t%" + std::to_string(now) + " = load @result_" + std::to_string(temp) + "_" + depth_str + "\n";
+            Koopa_IR += "  %" + std::to_string(now) + " = load @result_" + std::to_string(temp) + "_" + depth_str + "\n";
             now++;
         }
         /*if(landexp){
