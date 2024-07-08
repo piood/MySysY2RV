@@ -91,33 +91,33 @@ fun @main(): i32{
 再将Koopa IR转换成RSIC-V汇编程序，可以直接运行
 
 ```RSIC-V asm
-   .data
-   .globl COMPILER__a_
+  .data
+  .globl COMPILER__a_
 COMPILER__a_:
-   .word 10
+  .word 10
 
   .text
   .globl inc
 inc:
   addi sp, sp, -32
-   la t0, COMPILER__a_
-   lw t0, 0(t0)
-   li t4, 32
-   add t4, t4, sp
-   sw t0, (t4)
+  la t0, COMPILER__a_
+  lw t0, 0(t0)
+  li t4, 32
+  add t4, t4, sp
+  sw t0, (t4)
   lw t0, 32(sp)
   li t1, 1
   add t0, t1, t0
   sw t0, 28(sp)
 
   lw t0, 28(sp)
-   la t1, COMPILER__a_
-   sw t0, 0(t1)
-   la t0, COMPILER__a_
-   lw t0, 0(t0)
-   li t4, 24
-   add t4, t4, sp
-   sw t0, (t4)
+  la t1, COMPILER__a_
+  sw t0, 0(t1)
+  la t0, COMPILER__a_
+  lw t0, 0(t0)
+  li t4, 24
+  add t4, t4, sp
+  sw t0, (t4)
   lw a0, 24(sp)
   addi sp, sp, 32
   ret
@@ -126,11 +126,11 @@ inc:
   .globl print_a
 print_a:
   addi sp, sp, -32
-   la t0, COMPILER__a_
-   lw t0, 0(t0)
-   li t4, 32
-   add t4, t4, sp
-   sw t0, (t4)
+  la t0, COMPILER__a_
+  lw t0, 0(t0)
+  li t4, 32
+  add t4, t4, sp
+  sw t0, (t4)
   sw ra, 28(sp)
   lw a0, 32(sp)
   call putint
@@ -228,5 +228,4 @@ end_while_1:
   li a0, 0
   addi sp, sp, 112
   ret
-
 ```

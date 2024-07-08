@@ -50,22 +50,22 @@ int get_addr(const koopa_raw_value_t &value, const char* file, const char* func,
 void generate_global_code(const koopa_raw_program_t &raw){
     if(raw.values.len)
         {
-            std::cout<<"   .data"<<std::endl;
+            std::cout<<"  .data"<<std::endl;
             for(size_t i=0;i<raw.values.len;++i)
             {
                 koopa_raw_value_t data=(koopa_raw_value_t)raw.values.buffer[i];
-                std::cout<<"   .globl "<<data->name+1<<std::endl;
+                std::cout<<"  .globl "<<data->name+1<<std::endl;
                 std::cout<<data->name+1<<":"<<std::endl;
                 if(data->kind.data.global_alloc.init->kind.tag==KOOPA_RVT_INTEGER)
                 {
-                    std::cout<<"   .word "<<data->kind.data.global_alloc.init->kind.data.integer.value<<std::endl;
+                    std::cout<<"  .word "<<data->kind.data.global_alloc.init->kind.data.integer.value<<std::endl;
                     std::cout<<std::endl;
                 }
                 else if(data->kind.data.global_alloc.init->kind.tag==KOOPA_RVT_ZERO_INIT)
                 {
                     koopa_raw_type_t value=data->ty->data.pointer.base;
                     int siz=4;
-                    std::cout<<"   .zero "<<siz<<std::endl;
+                    std::cout<<"  .zero "<<siz<<std::endl;
                 }
             }
         }
@@ -198,8 +198,8 @@ void generate_store_code(const koopa_raw_store_t &store) {
     }
 
     if(sto_dest->kind.tag == KOOPA_RVT_GLOBAL_ALLOC){
-        std::cout<<"   la t1, "<<sto_dest->name+1<<std::endl;
-        std::cout<<"   sw t0, 0(t1)"<<std::endl;
+        std::cout<<"  la t1, "<<sto_dest->name+1<<std::endl;
+        std::cout<<"  sw t0, 0(t1)"<<std::endl;
     }else{
         //std::cout<<"sto_dest tag "<<sto_dest->kind.tag<<std::endl;
         std::cout<< "  sw t0, " << GET_ADDR(sto_dest) << "(sp)\n";
@@ -270,11 +270,11 @@ void generate_load_code(const koopa_raw_load_t &load, const koopa_raw_value_t &v
     koopa_raw_value_t loa_src = load.src;
     //std::string reg = "t0";
     if(loa_src->kind.tag == KOOPA_RVT_GLOBAL_ALLOC){
-        std::cout<<"   la t0, "<<value->kind.data.load.src->name+1<<std::endl;
-        std::cout<<"   lw t0, 0(t0)"<<std::endl;
-        std::cout<<"   li t4, "<<st<<std::endl;
-        std::cout<<"   add t4, t4, sp"<<std::endl;
-        std::cout<<"   sw t0, (t4)"<<std::endl;
+        std::cout<<"  la t0, "<<value->kind.data.load.src->name+1<<std::endl;
+        std::cout<<"  lw t0, 0(t0)"<<std::endl;
+        std::cout<<"  li t4, "<<st<<std::endl;
+        std::cout<<"  add t4, t4, sp"<<std::endl;
+        std::cout<<"  sw t0, (t4)"<<std::endl;
         value2addr[value] = st;
         st -= 4;
     }else{
