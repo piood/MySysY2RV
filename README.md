@@ -2,7 +2,7 @@
 北大编译原理课程实践，使用C++，独立完成的C语言子集SysY编译器，实现了从C语言编译到Koopa IR，再从Koopa IR到RISC-V汇编的编译。
 课程链接：https://pku-minic.github.io/online-doc/#/
 
-环境配置
+docker环境配置
 ```bash
 docker pull maxxing/compiler-dev
 ```
