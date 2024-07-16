@@ -1,6 +1,12 @@
 # MySysY2RV
 北大编译原理课程，使用C++，独立完成的C语言子集SysY编译器，实现了从C语言编译到Koopa IR，再从Koopa IR到RISC-V汇编的编译。
 
+环境配置
+```bash
+docker pull maxxing/compiler-dev
+```
+环境配置文档 https://pku-minic.github.io/online-doc/#/lv0-env-config/docker
+
 ```C
 int a = 10;
 
