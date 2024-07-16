@@ -7,6 +7,8 @@ docker pull maxxing/compiler-dev
 ```
 环境配置文档 https://pku-minic.github.io/online-doc/#/lv0-env-config/docker
 
+编译过程
+
 ```C
 int a = 10;
 
